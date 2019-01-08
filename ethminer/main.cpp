@@ -348,7 +348,7 @@ public:
             "--cuda-schedule,--cu-schedule", sched, {"auto", "spin", "yield", "sync"}, "", true);
 
         app.add_option("--cuda-streams,--cu-streams", m_CUSettings.streams, "", true)
-            ->check(CLI::Range(1, 99));
+            ->check(CLI::Range(1, 32));
 
 #endif
 
