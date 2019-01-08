@@ -67,7 +67,7 @@ void PoolManager::setClientHandlers()
             {
                 string ep = p_client->ActiveEndPoint();
                 if (!ep.empty())
-                    m_selectedHost = p_client->getConnection()->Host() + " " + ep;
+                    m_selectedHost = p_client->getConnection()->Host() + ep;
             }
 
             cnote << "Established connection to " << m_selectedHost;
