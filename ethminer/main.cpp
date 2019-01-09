@@ -248,6 +248,12 @@ public:
         app.add_option("--ergodicity", m_FarmSettings.ergodicity, "", true)
             ->check(CLI::Range(0, 2));
 
+        app.add_option("--startnonce", m_FarmSettings.startNonce, "", true)
+            ->check(CLI::Range(1ull, 18446744073709551615ull));
+
+        app.add_option("--noncesegmentwidth", m_FarmSettings.nonceSegmentWidth, "", true)
+            ->check(CLI::Range(10, 50));
+
         bool version = false;
 
         app.add_flag("-V,--version", version, "Show program version");
@@ -513,6 +519,15 @@ public:
                 std::string what = "-tstop must be greater than -tstart";
                 throw std::invalid_argument(what);
             }
+        }
+
+        if (m_FarmSettings.ergodicity != 0 && m_FarmSettings.startNonce)
+        {
+            // If we got a --startnonce and
+            // change nonce every job/session:
+            //      generate an error
+            std::string what = "You can not mix --ergodicity and --startnonce";
+            throw std::invalid_argument(what);
         }
 
         // Output warnings if any
@@ -1037,6 +1052,10 @@ public:
                  << "                        0 A search segment is picked at startup" << endl
                  << "                        1 A search segment is picked on every pool connection" << endl
                  << "                        2 A search segment is picked on every new job" << endl
+                 << "    --startnonce        UINT[1 .. 184467440737095516162] Default: not set" << endl
+                 << "                        Set the nonce to an explicit value." << endl
+                 << "                        This is only useful if you benchmark!" << endl
+                 << "    --noncesegmentwidth INT [10 .. 50] Default = 32" << endl
                  << endl
                  << "    --nocolor           FLAG Monochrome display log lines" << endl
                  << "    --syslog            FLAG Use syslog appropriate output (drop timestamp and" << endl

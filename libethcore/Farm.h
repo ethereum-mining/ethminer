@@ -50,12 +50,14 @@ namespace eth
 {
 struct FarmSettings
 {
-    unsigned dagLoadMode = 0;  // 0 = Parallel; 1 = Serialized
-    bool noEval = false;       // Whether or not to re-evaluate solutions
-    unsigned hwMon = 0;        // 0 - No monitor; 1 - Temp and Fan; 2 - Temp Fan Power
-    unsigned ergodicity = 0;   // 0=default, 1=per session, 2=per job
-    unsigned tempStart = 40;   // Temperature threshold to restart mining (if paused)
-    unsigned tempStop = 0;     // Temperature threshold to pause mining (overheating)
+    unsigned dagLoadMode = 0;         // 0 = Parallel; 1 = Serialized
+    bool noEval = false;              // Whether or not to re-evaluate solutions
+    unsigned hwMon = 0;               // 0 - No monitor; 1 - Temp and Fan; 2 - Temp Fan Power
+    unsigned ergodicity = 0;          // 0=default, 1=per session, 2=per job
+    uint64_t startNonce = 0;          // 0=not set, each other value: use it as nonce
+    unsigned nonceSegmentWidth = 32;  //
+    unsigned tempStart = 40;          // Temperature threshold to restart mining (if paused)
+    unsigned tempStop = 0;            // Temperature threshold to pause mining (overheating)
 };
 
 /**
@@ -288,8 +290,8 @@ private:
     // considering an average block time of 15 seconds
     // a single device GPU should need a speed of 286 Mh/s
     // before it consumes the whole 2^32 segment
-    uint64_t m_nonce_scrambler;
-    unsigned int m_nonce_segment_with = 32;
+    uint64_t m_nonce_scrambler;         // see also: FarmSettings.startNonce
+    unsigned int m_nonce_segment_with;  // set from FarmSettings.nonceSegmentWidth
 
     // Wrappers for hardware monitoring libraries and their mappers
     wrap_nvml_handle* nvmlh = nullptr;
