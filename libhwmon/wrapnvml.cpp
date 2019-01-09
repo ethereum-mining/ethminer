@@ -12,7 +12,7 @@
  *
  * John E. Stone - john.stone@gmail.com
  *
- * Modified to work with ethminer by
+ * Modified to work with progminer by
  *
  * Philipp Andreas - github@smurfy.de
  */

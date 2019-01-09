@@ -51,15 +51,15 @@ build_script:
   - cmake %CMAKE_ARGS%
   - cmake --build build --config Release --target package
   - ps: |
-      . build/ethminer/buildinfo.ps1
+      . build/progminer/buildinfo.ps1
       mkdir bin
       cp C:\CUDA\v$env:CUDA_VER\bin\nvrtc*.dll bin\
-      7z a build/ethminer.zip bin\nvrtc*.dll
-      mv build/ethminer.zip build/$env:project_name-$env:project_version-cuda$env:CUDA_VER-$env:system_name-$env:system_processor.zip
+      7z a build/progminer.zip bin\nvrtc*.dll
+      mv build/progminer.zip build/$env:project_name-$env:project_version-cuda$env:CUDA_VER-$env:system_name-$env:system_processor.zip
 
 artifacts:
-  - path: build/ethminer-*.zip
-    name: ethminer
+  - path: build/progminer-*.zip
+    name: progminer
 
 deploy:
   # Create GitHub release, also set the release name and description.
@@ -70,7 +70,7 @@ deploy:
   force_update: true  # Force update in case Travis CI created the release before.
   prerelease: $(project_version_is_prerelease)
   draft: false
-  artifact: ethminer
+  artifact: progminer
   auth_token:
     secure: 2Dw6gkb17Y6C0n3YaOX6qlhoDzLt9KeX8kZrLecaSL/ByecnFCbYqBUTZxxW9K4V
   on:

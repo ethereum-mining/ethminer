@@ -1,4 +1,4 @@
-# Ethminer's API documentation
+# Progminer's API documentation
 
 ## Table of Contents
 
@@ -24,23 +24,23 @@
 
 ## Introduction
 
-Ethminer implements an API (Application Programming Interface) interface which allows to monitor/control some of the run-time values endorsed by this miner. The API interface is available under the following circumstances:
+Progminer implements an API (Application Programming Interface) interface which allows to monitor/control some of the run-time values endorsed by this miner. The API interface is available under the following circumstances:
 
-* If you're using a binary release downloaded from the [releases](https://github.com/ethereum-mining/ethminer/releases) section of this repository
+* If you're using a binary release downloaded from the [releases](https://github.com/gangnamtestnet/progminer/releases) section of this repository
 * If you build the application from source ensuring you add the compilation switch `-D APICORE=ON`
 
 ## Activation and Security
 
-Whenever the above depicted conditions are met you can take advantage of the API support by adding the `--api-bind` argument to the command line used to launch ethminer. The format of this argument is `--api-bind address:port` where `nnnn` is any valid TCP port number (1-65535) and is required, and the `address` dictates what ip the api will listen on, and is optional, and defaults to "all ipv4 addresses". Examples:
+Whenever the above depicted conditions are met you can take advantage of the API support by adding the `--api-bind` argument to the command line used to launch progminer. The format of this argument is `--api-bind address:port` where `nnnn` is any valid TCP port number (1-65535) and is required, and the `address` dictates what ip the api will listen on, and is optional, and defaults to "all ipv4 addresses". Examples:
 
 ```shell
-./ethminer [...] --api-bind 3333
+./progminer [...] --api-bind 3333
 ```
 
 This example puts the API interface listening on port 3333 of **any** local IPv4 address which means the loop-back interface (127.0.0.1/127.0.1.1) and any configured IPv4 address of the network card(s). To only listen to localhost connections (which may be a more secure setting),
 
 ```shell
-./ethminer [...] --api-bind 127.0.0.1:3333
+./progminer [...] --api-bind 127.0.0.1:3333
 ```
 and likewise, to only listen on a specific address, replace `127.0.0.1` accordingly.
 
@@ -49,7 +49,7 @@ and likewise, to only listen on a specific address, replace `127.0.0.1` accordin
 The API interface not only offers monitoring queries but also implements some methods which may affect the functioning of the miner. These latter operations are named _write_ actions: if you want to inhibit the invocation of such methods you may want to put the API interface in **read-only** mode which means only query to **get** data will be allowed and no _write_ methods will be allowed. To do this simply add the - (minus) sign in front of the port number thus transforming the port number into a negative number. Example for read-only mode:
 
 ```shell
-./ethminer [...] --api-bind -3333
+./progminer [...] --api-bind -3333
 ```
 
 _Note. The port number in this examples is taken randomly and does not imply a suggested value. You can use any port number you wish while it's not in use by other applications._
@@ -57,18 +57,18 @@ _Note. The port number in this examples is taken randomly and does not imply a s
 To gain further security you may wish to password protect the access to your API interface simply by adding the `--api-password` argument to the command line sequence, followed by the password you wish. Password may be composed by any printable char and **must not** have spaces. Password checking is **case sensitive**. Example for password protected API interface:
 
 ```shell
-./ethminer [...] --api-bind -3333 --api-password MySuperSecurePassword!!#123456
+./progminer [...] --api-bind -3333 --api-password MySuperSecurePassword!!#123456
 ```
 
-At the time of writing of this document ethminer's API interface does not implement any sort of data encryption over SSL secure channel so **be advised your passwords will be sent as plain text over plain TCP sockets**.
+At the time of writing of this document progminer's API interface does not implement any sort of data encryption over SSL secure channel so **be advised your passwords will be sent as plain text over plain TCP sockets**.
 
 ## Usage
 
-Access to API interface is performed through a TCP socket connection to the API endpoint (which is the IP address of the computer running ethminer's API instance at the configured port). For instance if your computer address is 192.168.1.1 and have configured ethminer to run with `--api-bind 3333` your endpoint will be 192.168.1.1:3333.
+Access to API interface is performed through a TCP socket connection to the API endpoint (which is the IP address of the computer running progminer's API instance at the configured port). For instance if your computer address is 192.168.1.1 and have configured progminer to run with `--api-bind 3333` your endpoint will be 192.168.1.1:3333.
 
 Messages exchanged through this channel must conform to the [JSON-RPC 2.0 specification](http://www.jsonrpc.org/specification) so basically you will issue **requests** and will get back **responses**. At the time of writing this document do not expect any **notification**. All messages must be line feed terminated.
 
-To quickly test if your ethminer's API instance is working properly you can issue this simple command:
+To quickly test if your progminer's API instance is working properly you can issue this simple command:
 
 ```shell
 echo '{"id":0,"jsonrpc":"2.0","method":"miner_ping"}' | netcat 192.168.1.1 3333
@@ -90,12 +90,12 @@ This shows the API interface is live and listening on the configured endpoint.
 | [miner_ping](#miner_ping) | Responds back with a "pong" | No |
 | [miner_getstatdetail](#miner_getstatdetail) | Request the retrieval of operational data in most detailed form | No
 | [miner_getstat1](#miner_getstat1) | Request the retrieval of operational data in compatible format | No
-| [miner_restart](#miner_restart) | Instructs ethminer to stop and restart mining | Yes |
-| [miner_reboot](#miner_reboot) | Try to launch reboot.bat (on Windows) or reboot.sh (on Linux) in the ethminer executable directory | Yes
+| [miner_restart](#miner_restart) | Instructs progminer to stop and restart mining | Yes |
+| [miner_reboot](#miner_reboot) | Try to launch reboot.bat (on Windows) or reboot.sh (on Linux) in the progminer executable directory | Yes
 | [miner_shuffle](#miner_shuffle) | Initializes a new random scramble nonce | Yes
-| [miner_getconnections](#miner_getconnections) | Returns the list of connections held by ethminer | No
-| [miner_setactiveconnection](#miner_setactiveconnection) | Instruct ethminer to immediately connect to the specified connection | Yes
-| [miner_addconnection](#miner_addconnection) | Provides ethminer with a new connection to use | Yes
+| [miner_getconnections](#miner_getconnections) | Returns the list of connections held by progminer | No
+| [miner_setactiveconnection](#miner_setactiveconnection) | Instruct progminer to immediately connect to the specified connection | Yes
+| [miner_addconnection](#miner_addconnection) | Provides progminer with a new connection to use | Yes
 | [miner_removeconnection](#miner_removeconnection) | Removes the given connection from the list of available so it won't be used again | Yes
 | [miner_getscramblerinfo](#miner_getscramblerinfo) | Retrieve information about the nonce segments assigned to each GPU | No
 | [miner_setscramblerinfo](#miner_setscramblerinfo) | Sets information about the nonce segments assigned to each GPU | Yes
@@ -165,7 +165,7 @@ and expect back a result like this:
 
 which confirms the action has been performed.
 
-If you get no response or the socket timeouts it's likely your ethminer's instance has become unresponsive (or in worst cases the OS of your mining rig is unresponsive) and needs to be re-started/re-booted.
+If you get no response or the socket timeouts it's likely your progminer's instance has become unresponsive (or in worst cases the OS of your mining rig is unresponsive) and needs to be re-started/re-booted.
 
 ### miner_getstatdetail
 
@@ -225,9 +225,9 @@ and expect back a response like this:
       { ... }                                           // And another ...
     ],
     "host": {
-      "name": "miner01",                                // Host name of the computer running ethminer
+      "name": "miner01",                                // Host name of the computer running progminer
       "runtime": 121,                                   // Duration time (in seconds)
-      "version": "ethminer-0.18.0-alpha.1+commit.70c7cdbe.dirty"
+      "version": "progminer-0.18.0-alpha.1+commit.70c7cdbe.dirty"
     },
     "mining": {                                         // Mining info for the whole instance
       "difficulty": 3999938964,                         // Actual difficulty in hashes
@@ -270,7 +270,7 @@ and expect back a response like this:
   "id": 1,
   "jsonrpc": "2.0",
   "result": [
-    "ethminer-0.16.0.dev0+commit.41639944", // Running ethminer's version
+    "progminer-0.16.0.dev0+commit.41639944", // Running progminer's version
     "48",                                   // Total running time in minutes
     "87221;54;0",                           // ETH hashrate in KH/s, submitted shares, rejected shares
     "14683;14508;14508;14508;14508;14508",  // Detailed ETH hashrate in KH/s per GPU
@@ -283,11 +283,11 @@ and expect back a response like this:
 }
 ```
 
-Some of the arguments here expressed have been set for compatibility with other miners so their values are not set. For instance, ethminer **does not** support dual (ETH/DCR) mining.
+Some of the arguments here expressed have been set for compatibility with other miners so their values are not set. For instance, progminer **does not** support dual (ETH/DCR) mining.
 
 ### miner_restart
 
-With this method you instruct ethminer to _restart_ mining. Restarting means:
+With this method you instruct progminer to _restart_ mining. Restarting means:
 
 * Stop actual mining work
 * Unload generated DAG files
@@ -295,7 +295,7 @@ With this method you instruct ethminer to _restart_ mining. Restarting means:
 * Regenerate DAG files
 * Restart mining
 
-The invocation of this method **_may_** be useful if you detect one or more GPUs are in error, but in a recoverable state (eg. no hashrate but the GPU has not fallen off the bus). In other words, this method works like stopping ethminer and restarting it **but without loosing connection to the pool**.
+The invocation of this method **_may_** be useful if you detect one or more GPUs are in error, but in a recoverable state (eg. no hashrate but the GPU has not fallen off the bus). In other words, this method works like stopping progminer and restarting it **but without loosing connection to the pool**.
 
 To invoke the action:
 
@@ -323,8 +323,8 @@ which confirms the action has been performed.
 
 ### miner_reboot
 
-With this method you instruct ethminer to execute reboot.bat (on Windows) or reboot.sh (on Linux) script which must exists and being executable in the ethminer directory.
-As ethminer has no idea what's going on in the script, ethminer continues with it's normal work.
+With this method you instruct progminer to execute reboot.bat (on Windows) or reboot.sh (on Linux) script which must exists and being executable in the progminer directory.
+As progminer has no idea what's going on in the script, progminer continues with it's normal work.
 If you invoke this function `api_miner_reboot` is passed to the script as first parameter.
 
 To invoke the action:
@@ -347,7 +347,7 @@ and expect back a result like this:
 }
 ```
 
-which confirms an executable file was found and ethminer tried to start it.
+which confirms an executable file was found and progminer tried to start it.
 
 **Note**: This method is not available if the API interface is in read-only mode (see above).
 
@@ -356,7 +356,7 @@ which confirms an executable file was found and ethminer tried to start it.
 The mining process is nothing more that finding the right number (nonce) which, applied to an algorithm (ethash) and some data, gives a result which is below or equal to a given target. This is very very (very) short!
 The range of nonces to be searched is a huge number: 2^64 = 18446744073709600000~ possible values. Each one has the same probability to be the _right_ one.
 
-Every time ethminer receives a job from a pool you'd expect the miner to begin searching from the first, but that would be boring. So the concept of scramble nonce has been introduced to achieve these goals:
+Every time progminer receives a job from a pool you'd expect the miner to begin searching from the first, but that would be boring. So the concept of scramble nonce has been introduced to achieve these goals:
 
 * Start the searching from a random point within the range
 * Ensure all GPUs do not search the same data, or, in other words, ensure each GPU searches its own range of numbers without overlapping with the same numbers of the other GPUs
@@ -387,7 +387,7 @@ which confirms the action has been performed.
 
 ### miner_getconnections
 
-When you launch ethminer you provide a list of connections specified by the `-P` argument. If you want to remotely check which is the list of connections ethminer is using, you can issue this method:
+When you launch progminer you provide a list of connections specified by the `-P` argument. If you want to remotely check which is the list of connections progminer is using, you can issue this method:
 
 ```js
 {
@@ -454,14 +454,14 @@ or
 You have to pass the `params` member as an object which has member `index` valued to the ordinal index of the connection you want to activate. Alternatively, you can pass a regular expression to be matched against the connection URIs. As a result you expect one of the following:
 
 * Nothing happens if the provided index is already bound to an _active_ connection
-* If the selected index is not of an active connection then ethminer will disconnect from currently active connection and reconnect immediately to the newly selected connection
+* If the selected index is not of an active connection then progminer will disconnect from currently active connection and reconnect immediately to the newly selected connection
 * An error result if the index is out of bounds or the request is not properly formatted
 
-**Please note** that this method changes the runtime behavior only. If you restart ethminer from a batch file the active connection will become again the first one of the `-P` arguments list.
+**Please note** that this method changes the runtime behavior only. If you restart progminer from a batch file the active connection will become again the first one of the `-P` arguments list.
 
 ### miner_addconnection
 
-If you want to remotely add a new connection to the running instance of ethminer you can use this this method by sending a message like this
+If you want to remotely add a new connection to the running instance of progminer you can use this this method by sending a message like this
 
 ```js
 {
@@ -480,9 +480,9 @@ You have to pass the `params` member as an object which has member `uri` valued 
 * An error if you try to _mix_ stratum mode with getwork mode (which begins with `http://`)
 * A success message if the newly defined connection has been properly added
 
-Eventually you may want to issue [miner_getconnections](#miner_getconnections) method to identify which is the ordinal position assigned to the newly added connection and make use of [miner_setactiveconnection](#miner_setactiveconnection) method to instruct ethminer to use it immediately.
+Eventually you may want to issue [miner_getconnections](#miner_getconnections) method to identify which is the ordinal position assigned to the newly added connection and make use of [miner_setactiveconnection](#miner_setactiveconnection) method to instruct progminer to use it immediately.
 
-**Please note** that this method changes the runtime behavior only. If you restart ethminer from a batch file the added connection won't be available if not present in the `-P` arguments list.
+**Please note** that this method changes the runtime behavior only. If you restart progminer from a batch file the added connection won't be available if not present in the `-P` arguments list.
 
 ### miner_removeconnection
 
@@ -504,7 +504,7 @@ You have to pass the `params` member as an object which has member `index` value
 * An error if the index is out of bounds **or if the index corresponds to the currently active connection**
 * A success message. In such case you can later reissue [miner_getconnections](#miner_getconnections) method to check the connection has been effectively removed.
 
-**Please note** that this method changes the runtime behavior only. If you restart ethminer from a batch file the removed connection will become again again available if provided in the `-P` arguments list.
+**Please note** that this method changes the runtime behavior only. If you restart progminer from a batch file the removed connection will become again again available if provided in the `-P` arguments list.
 
 ### miner_getscramblerinfo
 
@@ -512,7 +512,7 @@ When searching for a valid nonce the miner has to find (at least) 1 of possible 
 This gives you an idea of numbers in play. Luckily a couple of factors come in our help: difficulty and time. We can imagine difficulty as a sort of judge who determines how many of those possible solutions are valid. And the block time which allows the miner to stay longer on a sequence of numbers to find the solution.
 This all said it's however impossible for any miner (no matter if CPU or GPU or even ASIC) to cover the most part of this huge range in reasonable amount of time. So we need to resign to examine and test only a small fraction of this range.
 
-Ethminer, at start, randomly chooses a scramble_nonce, a random number picked in the 2^64 range to start checking nonces from. In addition ethminer gives each GPU a unique, non overlapping, range of nonces called _segment_. Segments ensure no GPU does the same job of another GPU thus avoiding two GPU find the same result.
+Progminer, at start, randomly chooses a scramble_nonce, a random number picked in the 2^64 range to start checking nonces from. In addition progminer gives each GPU a unique, non overlapping, range of nonces called _segment_. Segments ensure no GPU does the same job of another GPU thus avoiding two GPU find the same result.
 To accomplish this each segment has a range 2^40 nonces by default. If you want to check which is the scramble_nonce and which are the segments assigned to each GPU you can issue this method:
 
 ```js
@@ -602,7 +602,7 @@ Again: This ONLY (re)starts mining if GPU was paused via a previous API call and
 
 ### miner_setverbosity
 
-Set the verbosity level of ethminer.
+Set the verbosity level of progminer.
 
 ```js
 {

@@ -12,5 +12,5 @@ jobs:
       - run: cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=ON -DAPICORE=ON -H. -Bbuild
       - run: cmake --build build -- -j4
       - store_artifacts:
-          path: build/ethminer/ethminer
-          destination: ethminer
+          path: build/progminer/progminer
+          destination: progminer

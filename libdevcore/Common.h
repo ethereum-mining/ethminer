@@ -1,5 +1,5 @@
-// ethminer -- Ethereum miner with OpenCL, CUDA and stratum support.
-// Copyright 2018 ethminer Authors.
+// progminer -- Ethereum miner with OpenCL, CUDA and stratum support.
+// Copyright 2018 progminer Authors.
 // Licensed under GNU General Public License, Version 3. See the LICENSE file.
 
 /// @file

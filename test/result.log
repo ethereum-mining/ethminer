@@ -1,5 +1,5 @@
->ethminer.exe -U -M 30000
-  m  00:37:26|main    |  ethminer version 0.15.0.dev0
+>progminer.exe -U -M 30000
+  m  00:37:26|main    |  progminer version 0.15.0.dev0
   m  00:37:26|main    |  Build: windows / release +git. 2c02a51
  cu  00:37:26|main    |  Using grid size 1024 , block size 512
 Benchmarking on platform: CUDA
