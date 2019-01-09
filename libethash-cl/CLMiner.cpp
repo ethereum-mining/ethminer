@@ -302,34 +302,30 @@ void CLMiner::workLoop()
 
     try
     {
+        volatile SearchResults results;
+
+        m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, offsetof(SearchResults, count),
+            sizeof(results.count), zerox3);
+
         while (!shouldStop())
         {
-
             // Read results.
-            volatile SearchResults results;
-
-            if (m_queue.size())
-            {
                 // no need to read the abort flag.
-                m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE,
-                    offsetof(SearchResults, count),
-                    (m_settings.noExit ? 1 : 2) * sizeof(results.count), (void*)&results.count);
-                if (results.count)
-                {
-                    m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
-                        results.count * sizeof(results.rslt[0]), (void*)&results);
-                    // Reset search buffer if any solution found.
-                    if (m_settings.noExit)
-                        m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
-                            offsetof(SearchResults, count), sizeof(results.count), zerox3);
-                }
-                // clean the solution count, hash count, and abort flag
-                if (!m_settings.noExit)
-                    m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
-                        offsetof(SearchResults, count), sizeof(zerox3), zerox3);
+            m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, offsetof(SearchResults, count),
+                (m_settings.noExit ? 1 : 2) * sizeof(results.count), (void*)&results.count);
+            if (results.count)
+            {
+                m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0,
+                    results.count * sizeof(results.rslt[0]), (void*)&results);
+                // Reset search buffer if any solution found.
+                if (m_settings.noExit)
+                    m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE,
+                        offsetof(SearchResults, count), sizeof(results.count), zerox3);
             }
-            else
-                results.count = 0;
+            // clean the solution count, hash count, and abort flag
+            if (!m_settings.noExit)
+                m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, offsetof(SearchResults, count),
+                    sizeof(zerox3), zerox3);
 
             // Wait for work or 3 seconds (whichever the first)
             const WorkPackage w = work();
@@ -347,12 +343,9 @@ void CLMiner::workLoop()
 
                 if (current.epoch != w.epoch)
                 {
-                    m_abortqueue.clear();
-
                     if (!initEpoch())
                         break;  // This will simply exit the thread
 
-                    m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
                 }
 
                 // Upper 64 bits of the boundary.
@@ -362,16 +355,14 @@ void CLMiner::workLoop()
                 startNonce = w.startNonce;
 
                 // Update header constant buffer.
-                m_queue[0].enqueueWriteBuffer(
-                    m_header[0], CL_FALSE, 0, w.header.size, w.header.data());
+                m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
                 // zero the result count
-                m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
-                    offsetof(SearchResults, count),
+                m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, offsetof(SearchResults, count),
                     m_settings.noExit ? sizeof(zerox3[0]) : sizeof(zerox3), zerox3);
 
-                m_searchKernel.setArg(0, m_searchBuffer[0]);  // Supply output buffer to kernel.
-                m_searchKernel.setArg(1, m_header[0]);        // Supply header buffer to kernel.
-                m_searchKernel.setArg(2, m_dag[0]);           // Supply DAG buffer to kernel.
+                m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
+                m_searchKernel.setArg(1, m_header);        // Supply header buffer to kernel.
+                m_searchKernel.setArg(2, *m_dag);          // Supply DAG buffer to kernel.
                 m_searchKernel.setArg(3, m_dagItems);
                 m_searchKernel.setArg(5, target);
 
@@ -387,7 +378,7 @@ void CLMiner::workLoop()
 
             // Run the kernel.
             m_searchKernel.setArg(4, startNonce);
-            m_queue[0].enqueueNDRangeKernel(
+            m_queue.enqueueNDRangeKernel(
                 m_searchKernel, cl::NullRange, m_settings.globalWorkSize, m_settings.localWorkSize);
 
             if (results.count)
@@ -424,23 +415,30 @@ void CLMiner::workLoop()
                 updateHashRate(m_settings.localWorkSize, results.hashCount);
         }
 
-        if (m_queue.size())
-            m_queue[0].finish();
+        m_queue.finish();
+        if (!m_settings.noExit)
+            m_abortqueue.finish();
     }
     catch (cl::Error const& _e)
     {
         string _what = ethCLErrorHelper("OpenCL Error", _e);
         throw std::runtime_error(_what);
     }
+    if (m_dag)
+        delete m_dag;
+    if (m_light)
+        delete m_light;
 }
 
 void CLMiner::kick_miner()
 {
     // Memory for abort Cannot be static because crashes on macOS.
-    const uint32_t one = 1;
-    if (!m_settings.noExit && !m_abortqueue.empty())
-        m_abortqueue[0].enqueueWriteBuffer(
-            m_searchBuffer[0], CL_TRUE, offsetof(SearchResults, abort), sizeof(one), &one);
+    if (!m_settings.noExit)
+    {
+        const uint32_t one = 1;
+        m_abortqueue.enqueueWriteBuffer(
+            m_searchBuffer, CL_TRUE, offsetof(SearchResults, abort), sizeof(one), &one);
+    }
 
     m_new_work_signal.notify_one();
 }
@@ -589,8 +587,6 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
 bool CLMiner::initDevice()
 {
 
-    // LookUp device
-    // Load available platforms
     vector<cl::Platform> platforms = getPlatforms();
     if (platforms.empty())
         return false;
@@ -599,7 +595,17 @@ bool CLMiner::initDevice()
     if (devices.empty())
         return false;
 
+    // Set global work size
+    m_settings.globalWorkSize = m_settings.localWorkSize * m_settings.globalWorkSizeMultiplier;
+
+    // Set device and context
     m_device = devices.at(m_deviceDescriptor.clDeviceOrdinal);
+    m_context = cl::Context(m_device);
+    m_queue = cl::CommandQueue(m_context, m_device);
+    if (!m_settings.noExit)
+        m_abortqueue = cl::CommandQueue(m_context, m_device);
+    m_searchBuffer = cl::Buffer(m_context, CL_MEM_READ_WRITE, sizeof(SearchResults));
+    m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
     // Set Hardware Monitor Info
     if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Nvidia)
@@ -718,12 +724,6 @@ bool CLMiner::initEpoch_internal()
         }
 
 #endif
-        // create context
-        m_context.clear();
-        m_context.push_back(cl::Context(vector<cl::Device>(&m_device, &m_device + 1)));
-        m_queue.clear();
-        m_queue.push_back(cl::CommandQueue(m_context[0], m_device));
-
 
         m_dagItems = m_epochContext.dagNumItems;
 
@@ -751,7 +751,7 @@ bool CLMiner::initEpoch_internal()
 
         // create miner OpenCL program
         cl::Program::Sources sources{{code.data(), code.size()}};
-        cl::Program program(m_context[0], sources), binaryProgram;
+        cl::Program program(m_context, sources), binaryProgram;
         try
         {
             program.build({m_device}, options);
@@ -797,7 +797,7 @@ bool CLMiner::initEpoch_internal()
 
                     /* Setup the program */
                     cl::Program::Binaries blobs({bin_data});
-                    cl::Program program(m_context[0], {m_device}, blobs);
+                    cl::Program program(m_context, {m_device}, blobs);
                     try
                     {
                         program.build({m_device}, options);
@@ -832,15 +832,17 @@ bool CLMiner::initEpoch_internal()
         {
             cllog << "Creating light cache buffer, size: "
                   << dev::getFormattedMemory((double)m_epochContext.lightSize);
-            m_light.clear();
-            m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.lightSize));
+            if (m_light)
+                delete m_light;
+            m_light = new cl::Buffer(m_context, CL_MEM_READ_ONLY, m_epochContext.lightSize);
             cllog << "Creating DAG buffer, size: "
                   << dev::getFormattedMemory((double)m_epochContext.dagSize)
                   << ", free: "
                   << dev::getFormattedMemory(
                          (double)(m_deviceDescriptor.totalMemory - RequiredMemory));
-            m_dag.clear();
-            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize));
+            if (m_dag)
+                delete m_dag;
+            m_dag = new cl::Buffer(m_context, CL_MEM_READ_ONLY, m_epochContext.dagSize);
             cllog << "Loading kernels";
 
             // If we have a binary kernel to use, let's try it
@@ -853,8 +855,8 @@ bool CLMiner::initEpoch_internal()
             m_dagKernel = cl::Kernel(program, "GenerateDAG");
 
             cllog << "Writing light cache buffer";
-            m_queue[0].enqueueWriteBuffer(
-                m_light[0], CL_TRUE, 0, m_epochContext.lightSize, m_epochContext.lightCache);
+            m_queue.enqueueWriteBuffer(
+                *m_light, CL_TRUE, 0, m_epochContext.lightSize, m_epochContext.lightCache);
         }
         catch (cl::Error const& err)
         {
@@ -864,20 +866,16 @@ bool CLMiner::initEpoch_internal()
         }
         // create buffer for header
         ETHCL_LOG("Creating buffer for header.");
-        m_header.clear();
-        m_header.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
 
-        m_searchKernel.setArg(1, m_header[0]);
-        m_searchKernel.setArg(2, m_dag[0]);
+        m_searchKernel.setArg(1, m_header);
+        m_searchKernel.setArg(2, *m_dag);
         m_searchKernel.setArg(3, m_dagItems);
 
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
-        m_searchBuffer.clear();
-        m_searchBuffer.emplace_back(m_context[0], CL_MEM_WRITE_ONLY, sizeof(SearchResults));
 
-        m_dagKernel.setArg(1, m_light[0]);
-        m_dagKernel.setArg(2, m_dag[0]);
+        m_dagKernel.setArg(1, *m_light);
+        m_dagKernel.setArg(2, *m_dag);
         m_dagKernel.setArg(3, (uint32_t)(m_epochContext.lightSize / 64));
 
         const uint32_t workItems = m_dagItems * 2;  // GPU computes partial 512-bit DAG items.
@@ -887,18 +885,18 @@ bool CLMiner::initEpoch_internal()
         for (start = 0; start <= workItems - chunk; start += chunk)
         {
             m_dagKernel.setArg(0, start);
-            m_queue[0].enqueueNDRangeKernel(
+            m_queue.enqueueNDRangeKernel(
                 m_dagKernel, cl::NullRange, chunk, m_settings.localWorkSize);
-            m_queue[0].finish();
+            m_queue.finish();
         }
         if (start < workItems)
         {
             uint32_t groupsLeft = workItems - start;
             groupsLeft = (groupsLeft + m_settings.localWorkSize - 1) / m_settings.localWorkSize;
             m_dagKernel.setArg(0, start);
-            m_queue[0].enqueueNDRangeKernel(m_dagKernel, cl::NullRange,
+            m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange,
                 groupsLeft * m_settings.localWorkSize, m_settings.localWorkSize);
-            m_queue[0].finish();
+            m_queue.finish();
         }
 
         auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startInit);
