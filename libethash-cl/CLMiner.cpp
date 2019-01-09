@@ -5,11 +5,13 @@
 
 #include <boost/dll.hpp>
 
+#include "libdevcore/TgzExtract.h"
 #include <libethcore/Farm.h>
 #include <ethash/ethash.hpp>
 
 #include "CLMiner.h"
 #include "ethash.h"
+
 
 using namespace dev;
 using namespace eth;
@@ -770,59 +772,48 @@ bool CLMiner::initEpoch_internal()
            the default kernel if loading fails for whatever reason */
         bool loadedBinary = false;
         std::string device_name = m_deviceDescriptor.clName;
+        std::stringstream member_strm, fname_strm;
 
         if (!m_settings.noBinary)
         {
-            std::ifstream kernel_file;
             vector<unsigned char> bin_data;
-            std::stringstream fname_strm;
 
+            fname_strm << boost::dll::program_location().parent_path().string()
+                       << "/kernels/kernels.tgz";
             /* Open kernels/ethash_{devicename}_lws{local_work_size}.bin */
             std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
-            fname_strm << boost::dll::program_location().parent_path().string()
-                       << "/kernels/ethash_" << device_name << "_lws" << m_settings.localWorkSize
-                       << (m_settings.noExit ? ".bin" : "_exit.bin");
-            cllog << "Loading binary kernel " << fname_strm.str();
+            member_strm << "ethash_" << device_name << "_lws" << m_settings.localWorkSize
+                        << (m_settings.noExit ? ".bin" : "_exit.bin");
+            cllog << "Loading binary kernel " << member_strm.str() << " from " << fname_strm.str();
             try
             {
-                kernel_file.open(fname_strm.str(), ios::in | ios::binary);
-
-                if (kernel_file.good())
-                {
                     /* Load the data vector with file data */
-                    kernel_file.unsetf(std::ios::skipws);
-                    bin_data.insert(bin_data.begin(),
-                        std::istream_iterator<unsigned char>(kernel_file),
-                        std::istream_iterator<unsigned char>());
-
-                    /* Setup the program */
-                    cl::Program::Binaries blobs({bin_data});
-                    cl::Program program(m_context[0], {m_device}, blobs);
-                    try
+                    if (ExtractFromTar(fname_strm.str(), member_strm.str(), bin_data))
                     {
-                        program.build({m_device}, options);
-                        cllog << "Build info success:"
-                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
-                        binaryProgram = program;
-                        loadedBinary = true;
+                        /* Setup the program */
+                        cl::Program::Binaries blobs({bin_data});
+                        cl::Program program(m_context[0], {m_device}, blobs);
+                        try
+                        {
+                            program.build({m_device}, options);
+                            binaryProgram = program;
+                            loadedBinary = true;
+                        }
+                        catch (cl::Error const&)
+                        {
+                            cwarn << "Build failed! Info:"
+                                  << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
+                            cwarn << fname_strm.str();
+                        }
                     }
-                    catch (cl::Error const&)
-                    {
-                        cwarn << "Build failed! Info:"
-                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
-                        cwarn << fname_strm.str();
-                        cwarn << "Falling back to OpenCL kernel...";
-                    }
-                }
-                else
-                {
-                    cwarn << "Failed to load binary kernel: " << fname_strm.str();
-                    cwarn << "Falling back to OpenCL kernel...";
-                }
             }
             catch (...)
             {
-                cwarn << "Failed to load binary kernel: " << fname_strm.str();
+            }
+            if (!loadedBinary)
+            {
+                cwarn << "Failed to load binary kernel " << member_strm.str() << " from "
+                      << fname_strm.str();
                 cwarn << "Falling back to OpenCL kernel...";
             }
         }

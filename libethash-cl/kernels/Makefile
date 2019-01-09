@@ -6,6 +6,8 @@ AS=clrxasm
 
 .PHONY: all
 all: ellesmere tonga baffin gfx900 gfx901
+	bash -c "cd bin; tar -cf - *.bin | gzip -9 > kernels.tgz"
+	rm bin/*.bin
 	@echo "Built ethash kernel for Ellesmere, Tonga, Baffin, Gfx900 and Gfx901 architectures."
 
 .PHONY: clean
