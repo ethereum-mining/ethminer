@@ -146,8 +146,12 @@ Farm::Farm(std::map<std::string, DeviceDescriptor>& _DevicesCollection, FarmSett
         }
     }
 
-    // Initialize nonce_scrambler
-    shuffle();
+    // Initialize nonce and nonce range
+    m_nonce_segment_with = m_Settings.nonceSegmentWidth;
+    if (m_Settings.startNonce)
+        m_nonce_scrambler = m_Settings.startNonce;
+    else
+        shuffle();
 
     // Start data collector timer
     // It should work for the whole lifetime of Farm
