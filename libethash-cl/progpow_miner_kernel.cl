@@ -173,9 +173,8 @@ typedef struct
     struct
     {
         // One word for gid and 8 for mix hash
-        uint gid;
+        ulong nonce;
         uint mix[8];
-        uint pad[7];  // pad to size power of 2 (keep this so the struct is same for ethash
     } result[MAX_SEARCH_RESULTS];
 } search_results;
 
@@ -273,7 +272,9 @@ __kernel void progpow_search(
     if (slot >= MAX_SEARCH_RESULTS) 
         return;
 
-    g_output->result[slot].gid = gid;
+    atomic_inc(&g_output->abort);
+    g_output->result[slot].nonce = (start_nonce + gid);
+
     #pragma unroll
     for (int i = 0; i < 8; i++)
         g_output->result[slot].mix[i] = digest.uint32s[i];

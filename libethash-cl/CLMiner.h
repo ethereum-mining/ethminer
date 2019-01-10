@@ -75,9 +75,8 @@ typedef struct
     struct
     {
         // One word for gid and 8 for mix hash
-        unsigned int gid;
+        unsigned long nonce;
         unsigned int mix[8];
-        unsigned int pad[7];  // pad to size power of 2 (keep this so the struct is same for ethash
     } result[MAX_SEARCH_RESULTS];
 } search_results;
 
@@ -109,12 +108,12 @@ private:
     cl::Kernel m_ethash_dag_kernel;
     cl::Kernel m_progpow_search_kernel;
 
-    bool m_initialized;
+    std::atomic<bool> m_activeKernel = {false};
 
     cl::Device m_device;
     cl::Context m_context;
     cl::CommandQueue m_queue;
-    cl::Event m_readEvent;
+    cl::CommandQueue m_queue_abort;
 
     long m_ethash_search_kernel_time = 0L;
     long m_progpow_search_kernel_time = 0L;
