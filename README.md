@@ -1,5 +1,7 @@
 # progminer (ethminer fork with ProgPoW implementation)
 
+![progminer](progminer.png)
+
 [![Discord](https://img.shields.io/badge/discord-join%20chat-blue.svg)](https://discord.gg/ZYfFbMH)
 [![Releases](https://img.shields.io/github/downloads/gangnamtestnet/progminer/total.svg)][Releases]
 
@@ -62,9 +64,9 @@ progminer --help
 
 ### Examples connecting to pools
 
-Connecting to [progpool.pro](https://progpool.pro): 
+Connecting to [progpool.pro](https://progpool.pro):
 
-`./progminer -P stratum://0xaa16a61dec2d3e260cd1348e48cd259a5fb03f49.test@progpool.pro:8008` or 
+`./progminer -P stratum://0xaa16a61dec2d3e260cd1348e48cd259a5fb03f49.test@progpool.pro:8008` or
 
 `progminer.exe -P stratum://0xaa16a61dec2d3e260cd1348e48cd259a5fb03f49.test@progpool.pro:8008`
 
