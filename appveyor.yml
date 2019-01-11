@@ -41,6 +41,9 @@ build_script:
   - cmake --build build --config Release --target package
   - ps: |
       . build/ethminer/buildinfo.ps1
+      mkdir bin
+      cp C:\CUDA\v$env:CUDA_VER\bin\nvrtc*.dll bin\
+      7z a build/ethminer.zip bin\nvrtc*.dll
       mv build/ethminer.zip build/$env:project_name-$env:project_version-cuda$env:CUDA_VER-$env:system_name-$env:system_processor.zip
 
 artifacts:
