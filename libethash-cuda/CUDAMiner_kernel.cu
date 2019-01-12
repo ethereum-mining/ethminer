@@ -208,7 +208,7 @@ progpow_search(
     }
 
     // keccak(header .. keccak(header..nonce) .. digest);
-    if (keccak_f800(header, seed, digest) >= target)
+    if (keccak_f800(header, seed, digest) > target)
         return;
 
     uint32_t index = atomicInc((uint32_t *)&g_output->count, 0xffffffff);
@@ -220,3 +220,4 @@ progpow_search(
     for (int i = 0; i < 8; i++)
         g_output->result[index].mix[i] = digest.uint32s[i];
 }
+

@@ -153,40 +153,40 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
     else
         ret << "if (hack_false) barrier(CLK_LOCAL_MEM_FENCE);\n";
 
-	for (int i = 0; (i < PROGPOW_CNT_CACHE) || (i < PROGPOW_CNT_MATH); i++)
-	{
-		if (i < PROGPOW_CNT_CACHE)
-		{
-			// Cached memory access
-			// lanes access random locations
-			std::string src = mix_cache();
-			std::string dest = mix_dst();
-			uint32_t    r = rnd();
-			ret << "// cache load " << i << "\n";
-			ret << "offset = " << src << " % PROGPOW_CACHE_WORDS;\n";
-			ret << "data = c_dag[offset];\n";
-			ret << merge(dest, "data", r);
-		}
-		if (i < PROGPOW_CNT_MATH)
-		{
-			// Random Math
-            // Generate 2 unique sources 
+    for (int i = 0; (i < PROGPOW_CNT_CACHE) || (i < PROGPOW_CNT_MATH); i++)
+    {
+        if (i < PROGPOW_CNT_CACHE)
+        {
+            // Cached memory access
+            // lanes access random locations
+            std::string src = mix_cache();
+            std::string dest = mix_dst();
+            uint32_t r = rnd();
+            ret << "// cache load " << i << "\n";
+            ret << "offset = " << src << " % PROGPOW_CACHE_WORDS;\n";
+            ret << "data = c_dag[offset];\n";
+            ret << merge(dest, "data", r);
+        }
+        if (i < PROGPOW_CNT_MATH)
+        {
+            // Random Math
+            // Generate 2 unique sources
             int src_rnd = rnd() % ((PROGPOW_REGS - 1) * PROGPOW_REGS);
             int src1 = src_rnd % PROGPOW_REGS; // 0 <= src1 < PROGPOW_REGS
             int src2 = src_rnd / PROGPOW_REGS; // 0 <= src2 < PROGPOW_REGS - 1
             if (src2 >= src1) ++src2; // src2 is now any reg other than src1
             std::string src1_str = "mix[" + std::to_string(src1) + "]";
             std::string src2_str = "mix[" + std::to_string(src2) + "]";
-			uint32_t    r1 = rnd();
+            uint32_t r1 = rnd();
             std::string dest = mix_dst();
-			uint32_t    r2 = rnd();
-			ret << "// random math " << i << "\n";
-			ret << math("data", src1_str, src2_str, r1);
-			ret << merge(dest, "data", r2);
-		}
-	}
-	// Consume the global load data at the very end of the loop, to allow fully latency hiding
-	ret << "// consume global load data\n";
+            uint32_t r2 = rnd();
+            ret << "// random math " << i << "\n";
+            ret << math("data", src1_str, src2_str, r1);
+            ret << merge(dest, "data", r2);
+        }
+    }
+    // Consume the global load data at the very end of the loop, to allow fully latency hiding
+    ret << "// consume global load data\n";
     ret << "// hack to prevent compiler from reordering LD and usage\n";
     if (kern == KERNEL_CUDA)
         ret << "if (hack_false) __threadfence_block();\n";

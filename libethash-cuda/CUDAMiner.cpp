@@ -227,7 +227,6 @@ void CUDAMiner::workLoop()
             }
             else if (old_period_seed != period_seed)
             {
-                const auto& context = ethash::get_global_epoch_context(w.epoch);
                 const auto dagNumItems = ethash::calculate_full_dataset_num_items(w.epoch);
                 compileKernel(period_seed, dagNumItems / 2);
             }
@@ -336,41 +335,38 @@ void CUDAMiner::compileKernel(
     uint64_t period_seed,
     uint64_t dag_elms)
 {
+    cudaDeviceProp device_props;
+    CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_deviceDescriptor.cuDeviceIndex));
+
+    cudalog << "Compiling kernel, seed " << period_seed << ", arch "
+            << to_string(device_props.major) << '.' << to_string(device_props.minor);
     const char* name = "progpow_search";
 
     std::string text = ProgPow::getKern(period_seed, ProgPow::KERNEL_CUDA);
     text += std::string(CUDAMiner_kernel, sizeof(CUDAMiner_kernel));
 
     ofstream write;
-    write.open("kernel.cu");
+    write.open("/tmp/kernel.cu");
     write << text;
     write.close();
 
     nvrtcProgram prog;
-    NVRTC_SAFE_CALL(
-        nvrtcCreateProgram(
-            &prog,         // prog
-            text.c_str(),  // buffer
-            "kernel.cu",    // name
-            0,             // numHeaders
-            NULL,          // headers
-            NULL));        // includeNames
+    NVRTC_SAFE_CALL(nvrtcCreateProgram(&prog,  // prog
+        text.c_str(),                          // buffer
+        "/tmp/kernel.cu",                      // name
+        0,                                     // numHeaders
+        NULL,                                  // headers
+        NULL));                                // includeNames
 
     NVRTC_SAFE_CALL(nvrtcAddNameExpression(prog, name));
-    cudaDeviceProp device_props;
-    CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_deviceDescriptor.cuDeviceIndex));
     std::string op_arch = "--gpu-architecture=compute_" + to_string(device_props.major) + to_string(device_props.minor);
     std::string op_dag = "-DPROGPOW_DAG_ELEMENTS=" + to_string(dag_elms);
 
-    const char *opts[] = {
-        op_arch.c_str(),
-        op_dag.c_str(),
-        "-lineinfo"
-    };
-    nvrtcResult compileResult = nvrtcCompileProgram(
-        prog,  // prog
-        3,     // numOptions
-        opts); // options
+    const char* opts[] = {op_arch.c_str(), op_dag.c_str(), "-lineinfo"};
+    nvrtcResult compileResult = nvrtcCompileProgram(prog,  // prog
+        sizeof(opts) / sizeof(opts[0]),                    // numOptions
+        opts);                                             // options
+#ifdef DEV_BUILD
     // Obtain compilation log from the program.
     size_t logSize;
     NVRTC_SAFE_CALL(nvrtcGetProgramLogSize(prog, &logSize));
@@ -378,15 +374,13 @@ void CUDAMiner::compileKernel(
     NVRTC_SAFE_CALL(nvrtcGetProgramLog(prog, log));
     cudalog << "Compile log: " << log;
     delete[] log;
+#endif
     NVRTC_SAFE_CALL(compileResult);
     // Obtain PTX from the program.
     size_t ptxSize;
     NVRTC_SAFE_CALL(nvrtcGetPTXSize(prog, &ptxSize));
     char *ptx = new char[ptxSize];
     NVRTC_SAFE_CALL(nvrtcGetPTX(prog, ptx));
-    write.open("kernel.ptx");
-    write << ptx;
-    write.close();
     // Load the generated PTX and get a handle to the kernel.
     char *jitInfo = new char[32 * 1024];
     char *jitErr = new char[32 * 1024];
@@ -407,15 +401,19 @@ void CUDAMiner::compileKernel(
         (void*)(1)
     };
     CU_SAFE_CALL(cuModuleLoadDataEx(&m_module, ptx, 6, jitOpt, jitOptVal));
+#ifdef DEV_BUILD
     cudalog << "JIT info: \n" << jitInfo;
     cudalog << "JIT err: \n" << jitErr;
-    delete[] ptx;
+#endif
     delete[] jitInfo;
     delete[] jitErr;
+    delete[] ptx;
     // Find the mangled name
     const char* mangledName;
     NVRTC_SAFE_CALL(nvrtcGetLoweredName(prog, name, &mangledName));
+#ifdef DEV_BUILD
     cudalog << "Mangled name: " << mangledName;
+#endif
     CU_SAFE_CALL(cuModuleGetFunction(&m_kernel, m_module, mangledName));
     cudalog << "done compiling";
     // Destroy the program.

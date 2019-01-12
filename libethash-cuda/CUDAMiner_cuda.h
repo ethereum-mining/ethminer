@@ -111,17 +111,15 @@ do {													\
 	}													\
 } while (0)
 
-#define NVRTC_SAFE_CALL(call)							\
-do {                                                    \
-    nvrtcResult result = call;                          \
-    if (result != NVRTC_SUCCESS) {                      \
-		std::stringstream ss;							\
-		ss << "CUDA NVRTC error in func " 				\
-			<< __FUNCTION__ 							\
-			<< " at line "								\
-			<< __LINE__									\
-			<< " calling " #call " failed with error "  \
-            << nvrtcGetErrorString(result) << '\n';     \
-		throw cuda_runtime_error(ss.str());				\
-    }                                                   \
-} while(0)
+#define NVRTC_SAFE_CALL(call)                                                                     \
+    do                                                                                            \
+    {                                                                                             \
+        nvrtcResult result = call;                                                                \
+        if (result != NVRTC_SUCCESS)                                                              \
+        {                                                                                         \
+            std::stringstream ss;                                                                 \
+            ss << "CUDA NVRTC error in func " << __FUNCTION__ << " at line " << __LINE__          \
+               << " calling " #call " failed with error " << nvrtcGetErrorString(result) << '\n'; \
+            throw cuda_runtime_error(ss.str());                                                   \
+        }                                                                                         \
+    } while (0)

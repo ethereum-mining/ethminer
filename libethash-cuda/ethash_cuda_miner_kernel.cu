@@ -186,3 +186,4 @@ void set_target(uint64_t _target)
 {
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(d_target, &_target, sizeof(uint64_t)));
 }
+

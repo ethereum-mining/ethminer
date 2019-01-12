@@ -616,7 +616,6 @@ bool CLMiner::initDevice()
         m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
         m_hwmoninfo.devicePciId = m_deviceDescriptor.uniqueId;
         m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
-        m_settings.noBinary = true;
     }
     else if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Amd)
     {
@@ -629,7 +628,6 @@ bool CLMiner::initDevice()
         m_hwmoninfo.deviceType = HwMonitorInfoType::UNKNOWN;
         m_hwmoninfo.devicePciId = m_deviceDescriptor.uniqueId;
         m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
-        m_settings.noBinary = true;
     }
     else
     {
@@ -737,67 +735,7 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
         uint64_t period_seed = block_number / PROGPOW_PERIOD;
         compileKernel(period_seed);
 
-        /* If we have a binary kernel, we load it in tandem with the opencl,
-           that way, we can use the dag generate opencl code and fall back on
-           the default kernel if loading fails for whatever reason */
-        bool loadedBinary = false;
         std::string device_name = m_deviceDescriptor.clName;
-
-        if (false && !m_settings.noBinary)
-        {
-            std::ifstream kernel_file;
-            vector<unsigned char> bin_data;
-            std::stringstream fname_strm;
-
-            /* Open kernels/ethash_{devicename}_lws{local_work_size}.bin */
-            std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
-            fname_strm << boost::dll::program_location().parent_path().string()
-                       << "/kernels/ethash_" << device_name << "_lws" << m_settings.localWorkSize
-                       << (m_settings.noExit ? ".bin" : "_exit.bin");
-            cllog << "Loading binary kernel " << fname_strm.str();
-            try
-            {
-                kernel_file.open(fname_strm.str(), ios::in | ios::binary);
-
-                if (kernel_file.good())
-                {
-                    /* Load the data vector with file data */
-                    kernel_file.unsetf(std::ios::skipws);
-                    bin_data.insert(bin_data.begin(),
-                        std::istream_iterator<unsigned char>(kernel_file),
-                        std::istream_iterator<unsigned char>());
-
-                    /* Setup the program */
-                    cl::Program::Binaries blobs({bin_data});
-                    cl::Program program(m_context[0], {m_device}, blobs);
-                    try
-                    {
-                        program.build({m_device}, m_options);
-                        cllog << "Build info success:"
-                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
-                        binaryProgram = program;
-                        loadedBinary = true;
-                    }
-                    catch (cl::Error const&)
-                    {
-                        cwarn << "Build failed! Info:"
-                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
-                        cwarn << fname_strm.str();
-                        cwarn << "Falling back to OpenCL kernel...";
-                    }
-                }
-                else
-                {
-                    cwarn << "Failed to load binary kernel: " << fname_strm.str();
-                    cwarn << "Falling back to OpenCL kernel...";
-                }
-            }
-            catch (...)
-            {
-                cwarn << "Failed to load binary kernel: " << fname_strm.str();
-                cwarn << "Falling back to OpenCL kernel...";
-            }
-        }
 
         // create buffer for dag
         try
