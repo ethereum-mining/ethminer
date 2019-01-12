@@ -793,7 +793,6 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
             }
         }
 
-
         // create buffer for dag
         try
         {
