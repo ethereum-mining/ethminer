@@ -846,3 +846,4 @@ DEV_INLINE void SHA3_512(uint2* s)
     /* iota: a[0,0] ^= round constant */
     s[0] ^= LDG(keccak_round_constants[23]);
 }
+

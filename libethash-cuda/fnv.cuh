@@ -16,3 +16,4 @@ DEV_INLINE uint32_t fnv_reduce(uint4 v)
 {
     return fnv(fnv(fnv(v.x, v.y), v.z), v.w);
 }
+

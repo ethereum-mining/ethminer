@@ -243,6 +243,8 @@ public:
      */
     void submitProof(Solution const& _s) override;
 
+    bool getNoEval() { return m_Settings.noEval; }
+
 private:
     std::atomic<bool> m_paused = {false};
 

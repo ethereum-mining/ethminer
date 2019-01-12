@@ -616,7 +616,6 @@ bool CLMiner::initDevice()
         m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
         m_hwmoninfo.devicePciId = m_deviceDescriptor.uniqueId;
         m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
-        m_settings.noBinary = true;
     }
     else if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Amd)
     {
@@ -629,7 +628,6 @@ bool CLMiner::initDevice()
         m_hwmoninfo.deviceType = HwMonitorInfoType::UNKNOWN;
         m_hwmoninfo.devicePciId = m_deviceDescriptor.uniqueId;
         m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
-        m_settings.noBinary = true;
     }
     else
     {
@@ -712,6 +710,7 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
 
     try
     {
+        char options[256] = {0};
 #ifndef __clang__
 
         // Nvidia
@@ -737,13 +736,14 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
         uint64_t period_seed = block_number / PROGPOW_PERIOD;
         compileKernel(period_seed);
 
+        std::string device_name = m_deviceDescriptor.clName;
+
         /* If we have a binary kernel, we load it in tandem with the opencl,
            that way, we can use the dag generate opencl code and fall back on
            the default kernel if loading fails for whatever reason */
         bool loadedBinary = false;
-        std::string device_name = m_deviceDescriptor.clName;
 
-        if (false && !m_settings.noBinary)
+        if (!m_settings.noBinary)
         {
             std::ifstream kernel_file;
             vector<unsigned char> bin_data;
@@ -752,7 +752,7 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
             /* Open kernels/ethash_{devicename}_lws{local_work_size}.bin */
             std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
             fname_strm << boost::dll::program_location().parent_path().string()
-                       << "/kernels/ethash_" << device_name << "_lws" << m_settings.localWorkSize
+                       << "/kernels/progpow_" << device_name << "_lws" << m_settings.localWorkSize
                        << (m_settings.noExit ? ".bin" : "_exit.bin");
             cllog << "Loading binary kernel " << fname_strm.str();
             try
@@ -772,7 +772,7 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
                     cl::Program program(m_context[0], {m_device}, blobs);
                     try
                     {
-                        program.build({m_device}, m_options);
+                        program.build({m_device}, options);
                         cllog << "Build info success:"
                               << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
                         binaryProgram = program;
@@ -780,19 +780,13 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
                     }
                     catch (cl::Error const&)
                     {
-                        cwarn << "Build failed! Info:"
-                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
-                        cwarn << fname_strm.str();
-                        cwarn << "Falling back to OpenCL kernel...";
                     }
-                }
-                else
-                {
-                    cwarn << "Failed to load binary kernel: " << fname_strm.str();
-                    cwarn << "Falling back to OpenCL kernel...";
                 }
             }
             catch (...)
+            {
+            }
+            if (!loadedBinary)
             {
                 cwarn << "Failed to load binary kernel: " << fname_strm.str();
                 cwarn << "Falling back to OpenCL kernel...";
@@ -878,6 +872,7 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
 bool CLMiner::compileKernel(
     uint64_t period_seed)
 {
+    cllog << "Compiling OpenCL kernel";
     // patch source code
     // note: The kernels here are simply compiled version of the respective .cl kernels
     // into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
@@ -885,7 +880,7 @@ bool CLMiner::compileKernel(
     // TODO: Just use C++ raw string literal.
 
     std::string code = ProgPow::getKern(period_seed, ProgPow::KERNEL_CL);
-    code += string(CLMiner_kernel, sizeof(CLMiner_kernel));
+    code += string(CLMiner_kernel);
 
     addDefinition(code, "GROUP_SIZE", m_settings.localWorkSize);
     addDefinition(code, "ACCESSES", 64);
@@ -913,11 +908,6 @@ bool CLMiner::compileKernel(
 
     if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
         addDefinition(code, "LEGACY", 1);
-
-    ofstream out;
-    out.open("kernel.cl");
-    out << code;
-    out.close();
 
     // create miner OpenCL program
     cl::Program::Sources sources{{code.data(), code.size()}};
@@ -947,6 +937,8 @@ bool CLMiner::compileKernel(
 
     m_searchKernel.setArg(1, m_header[0]);
     m_searchKernel.setArg(5, 0);
+
+    cllog << "Compile done";
 
     return false;
 }

@@ -5,11 +5,11 @@
 add_custom_command(
 	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/CLMiner_kernel.h
 	COMMAND ${CMAKE_COMMAND} ARGS
-	-DBIN2H_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/CLMiner_kernel.cl"
-	-DBIN2H_VARIABLE_NAME=CLMiner_kernel
-	-DBIN2H_HEADER_FILE="${CMAKE_CURRENT_BINARY_DIR}/CLMiner_kernel.h"
-	-P "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/bin2h.cmake"
-	COMMENT "Generating OpenCL Kernel Byte Array"
+	-DTXT2STR_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/CLMiner_kernel.cl"
+	-DTXT2STR_VARIABLE_NAME=CLMiner_kernel
+	-DTXT2STR_HEADER_FILE="${CMAKE_CURRENT_BINARY_DIR}/CLMiner_kernel.h"
+	-P "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/txt2str.cmake"
+	COMMENT "Generating OpenCL Kernel"
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/CLMiner_kernel.cl
 )
 add_custom_target(cl_kernel DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/CLMiner_kernel.h ${CMAKE_CURRENT_SOURCE_DIR}/CLMiner_kernel.cl)
