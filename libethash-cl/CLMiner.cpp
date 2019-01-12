@@ -710,6 +710,7 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
 
     try
     {
+        char options[256] = {0};
 #ifndef __clang__
 
         // Nvidia
@@ -736,6 +737,61 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
         compileKernel(period_seed);
 
         std::string device_name = m_deviceDescriptor.clName;
+
+        /* If we have a binary kernel, we load it in tandem with the opencl,
+           that way, we can use the dag generate opencl code and fall back on
+           the default kernel if loading fails for whatever reason */
+        bool loadedBinary = false;
+
+        if (!m_settings.noBinary)
+        {
+            std::ifstream kernel_file;
+            vector<unsigned char> bin_data;
+            std::stringstream fname_strm;
+
+            /* Open kernels/ethash_{devicename}_lws{local_work_size}.bin */
+            std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
+            fname_strm << boost::dll::program_location().parent_path().string()
+                       << "/kernels/progpow_" << device_name << "_lws" << m_settings.localWorkSize
+                       << (m_settings.noExit ? ".bin" : "_exit.bin");
+            cllog << "Loading binary kernel " << fname_strm.str();
+            try
+            {
+                kernel_file.open(fname_strm.str(), ios::in | ios::binary);
+
+                if (kernel_file.good())
+                {
+                    /* Load the data vector with file data */
+                    kernel_file.unsetf(std::ios::skipws);
+                    bin_data.insert(bin_data.begin(),
+                        std::istream_iterator<unsigned char>(kernel_file),
+                        std::istream_iterator<unsigned char>());
+
+                    /* Setup the program */
+                    cl::Program::Binaries blobs({bin_data});
+                    cl::Program program(m_context[0], {m_device}, blobs);
+                    try
+                    {
+                        program.build({m_device}, options);
+                        cllog << "Build info success:"
+                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
+                        binaryProgram = program;
+                        loadedBinary = true;
+                    }
+                    catch (cl::Error const&)
+                    {
+                    }
+                }
+            }
+            catch (...)
+            {
+            }
+            if (!loadedBinary)
+            {
+                cwarn << "Failed to load binary kernel: " << fname_strm.str();
+                cwarn << "Falling back to OpenCL kernel...";
+            }
+        }
 
         // create buffer for dag
         try
@@ -816,6 +872,7 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
 bool CLMiner::compileKernel(
     uint64_t period_seed)
 {
+    cllog << "Compiling OpenCL kernel";
     // patch source code
     // note: The kernels here are simply compiled version of the respective .cl kernels
     // into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
@@ -823,7 +880,7 @@ bool CLMiner::compileKernel(
     // TODO: Just use C++ raw string literal.
 
     std::string code = ProgPow::getKern(period_seed, ProgPow::KERNEL_CL);
-    code += string(CLMiner_kernel, sizeof(CLMiner_kernel));
+    code += string(CLMiner_kernel);
 
     addDefinition(code, "GROUP_SIZE", m_settings.localWorkSize);
     addDefinition(code, "ACCESSES", 64);
@@ -851,11 +908,6 @@ bool CLMiner::compileKernel(
 
     if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
         addDefinition(code, "LEGACY", 1);
-
-    ofstream out;
-    out.open("kernel.cl");
-    out << code;
-    out.close();
 
     // create miner OpenCL program
     cl::Program::Sources sources{{code.data(), code.size()}};
@@ -885,6 +937,8 @@ bool CLMiner::compileKernel(
 
     m_searchKernel.setArg(1, m_header[0]);
     m_searchKernel.setArg(5, 0);
+
+    cllog << "Compile done";
 
     return false;
 }

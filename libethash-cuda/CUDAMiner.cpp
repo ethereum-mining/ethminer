@@ -338,12 +338,16 @@ void CUDAMiner::compileKernel(
     cudaDeviceProp device_props;
     CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_deviceDescriptor.cuDeviceIndex));
 
-    cudalog << "Compiling kernel, seed " << period_seed << ", arch "
-            << to_string(device_props.major) << '.' << to_string(device_props.minor);
+    cudalog << "Compiling CUDA kernel"
+#ifdef DEV_BUILD
+            << ", seed " << period_seed << ", arch " << to_string(device_props.major) << '.'
+            << to_string(device_props.minor)
+#endif
+        ;
     const char* name = "progpow_search";
 
     std::string text = ProgPow::getKern(period_seed, ProgPow::KERNEL_CUDA);
-    text += std::string(CUDAMiner_kernel, sizeof(CUDAMiner_kernel));
+    text += std::string(CUDAMiner_kernel);
 
     ofstream write;
     write.open("/tmp/kernel.cu");
@@ -415,7 +419,7 @@ void CUDAMiner::compileKernel(
     cudalog << "Mangled name: " << mangledName;
 #endif
     CU_SAFE_CALL(cuModuleGetFunction(&m_kernel, m_module, mangledName));
-    cudalog << "done compiling";
+    cudalog << "Compile done";
     // Destroy the program.
     NVRTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
 }

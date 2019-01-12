@@ -107,6 +107,7 @@ struct CUSettings : public MinerSettings
 struct CLSettings : public MinerSettings
 {
     bool noExit = false;
+    bool noBinary = false;
     unsigned globalWorkSize = 0;
     unsigned globalWorkSizeMultiplier = 2048;
     unsigned localWorkSize = 256;
