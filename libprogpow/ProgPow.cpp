@@ -48,7 +48,7 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
         swap(mix_seq_cache[i], mix_seq_cache[j]);
     }
 
-	if (kern == KERNEL_CUDA)
+    if (kern == KERNEL_CUDA)
     {
         ret << "typedef unsigned int       uint32_t;\n";
         ret << "typedef unsigned long long uint64_t;\n";
@@ -74,18 +74,18 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
         ret << "\n";
     }
     else
-	{
-		ret << "#ifndef GROUP_SIZE\n";
-		ret << "#define GROUP_SIZE 128\n";
-		ret << "#endif\n";
-		ret << "#define GROUP_SHARE (GROUP_SIZE / " << PROGPOW_LANES << ")\n";
+    {
+        ret << "#ifndef GROUP_SIZE\n";
+        ret << "#define GROUP_SIZE 128\n";
+        ret << "#endif\n";
+        ret << "#define GROUP_SHARE (GROUP_SIZE / " << PROGPOW_LANES << ")\n";
         ret << "\n";
         ret << "typedef unsigned int       uint32_t;\n";
         ret << "typedef unsigned long      uint64_t;\n";
         ret << "#define ROTL32(x, n) rotate((x), (uint32_t)(n))\n";
         ret << "#define ROTR32(x, n) rotate((x), (uint32_t)(32-n))\n";
         ret << "\n";
-	}
+    }
 
     ret << "#define PROGPOW_LANES           " << PROGPOW_LANES << "\n";
     ret << "#define PROGPOW_REGS            " << PROGPOW_REGS << "\n";
@@ -95,8 +95,8 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
     ret << "#define PROGPOW_CNT_MATH        " << PROGPOW_CNT_MATH << "\n";
     ret << "\n";
 
-	if (kern == KERNEL_CUDA)
-	{
+    if (kern == KERNEL_CUDA)
+    {
         ret << "typedef struct __align__(16) {uint32_t s[PROGPOW_DAG_LOADS];} dag_t;\n";
         ret << "\n";
         ret << "// Inner loop for prog_seed " << prog_seed << "\n";
@@ -105,9 +105,9 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
         ret << "        const dag_t *g_dag,\n";
         ret << "        const uint32_t c_dag[PROGPOW_CACHE_WORDS],\n";
         ret << "        const bool hack_false)\n";
-	}
-	else
-	{
+    }
+    else
+    {
         ret << "typedef struct __attribute__ ((aligned (16))) {uint32_t s[PROGPOW_DAG_LOADS];} dag_t;\n";
         ret << "\n";
         ret << "// Inner loop for prog_seed " << prog_seed << "\n";
@@ -117,35 +117,36 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
         ret << "        __local const uint32_t c_dag[PROGPOW_CACHE_WORDS],\n";
         ret << "        __local uint64_t share[GROUP_SHARE],\n";
         ret << "        const bool hack_false)\n";
-	}
-	ret << "{\n";
+    }
+    ret << "{\n";
 
     ret << "dag_t data_dag;\n";
-	ret << "uint32_t offset, data;\n";
+    ret << "uint32_t offset, data;\n";
 
-	if (kern == KERNEL_CUDA)
-		ret << "const uint32_t lane_id = threadIdx.x & (PROGPOW_LANES-1);\n";
-	else
-	{
-		ret << "const uint32_t lane_id = get_local_id(0) & (PROGPOW_LANES-1);\n";
-		ret << "const uint32_t group_id = get_local_id(0) / PROGPOW_LANES;\n";
-	}
+    if (kern == KERNEL_CUDA)
+        ret << "const uint32_t lane_id = threadIdx.x & (PROGPOW_LANES-1);\n";
+    else
+    {
+        ret << "const uint32_t lane_id = get_local_id(0) & (PROGPOW_LANES-1);\n";
+        ret << "const uint32_t group_id = get_local_id(0) / PROGPOW_LANES;\n";
+    }
 
-	// Global memory access
-	// lanes access sequential locations
-	// Hard code mix[0] to guarantee the address for the global load depends on the result of the load
-	ret << "// global load\n";
-	if (kern == KERNEL_CUDA)
-		ret << "offset = SHFL(mix[0], loop%PROGPOW_LANES, PROGPOW_LANES);\n";
-	else
-	{
-		ret << "if(lane_id == (loop % PROGPOW_LANES))\n";
-		ret << "    share[group_id] = mix[0];\n";
-		ret << "barrier(CLK_LOCAL_MEM_FENCE);\n";
-		ret << "offset = share[group_id];\n";
-	}
-	ret << "offset %= PROGPOW_DAG_ELEMENTS;\n";
-	ret << "offset = offset * PROGPOW_LANES + (lane_id ^ loop) % PROGPOW_LANES;\n";
+    // Global memory access
+    // lanes access sequential locations
+    // Hard code mix[0] to guarantee the address for the global load depends on the result of the
+    // load
+    ret << "// global load\n";
+    if (kern == KERNEL_CUDA)
+        ret << "offset = SHFL(mix[0], loop%PROGPOW_LANES, PROGPOW_LANES);\n";
+    else
+    {
+        ret << "if(lane_id == (loop % PROGPOW_LANES))\n";
+        ret << "    share[group_id] = mix[0];\n";
+        ret << "barrier(CLK_LOCAL_MEM_FENCE);\n";
+        ret << "offset = share[group_id];\n";
+    }
+    ret << "offset %= PROGPOW_DAG_ELEMENTS;\n";
+    ret << "offset = offset * PROGPOW_LANES + (lane_id ^ loop) % PROGPOW_LANES;\n";
     ret << "data_dag = g_dag[offset];\n";
     ret << "// hack to prevent compiler from reordering LD and usage\n";
     if (kern == KERNEL_CUDA)
@@ -199,10 +200,10 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
         uint32_t    r = rnd();
         ret << merge(dest, "data_dag.s["+std::to_string(i)+"]", r);
     }
-	ret << "}\n";
-	ret << "\n";
+    ret << "}\n";
+    ret << "\n";
 
-	return ret.str();
+    return ret.str();
 }
 
 // Merge new data from b into the value in a
@@ -210,39 +211,56 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 // (IE don't do A&B)
 std::string ProgPow::merge(std::string a, std::string b, uint32_t r)
 {
-	switch (r % 4)
-	{
-	case 0: return a + " = (" + a + " * 33) + " + b + ";\n";
-	case 1: return a + " = (" + a + " ^ " + b + ") * 33;\n";
-	case 2: return a + " = ROTL32(" + a + ", " + std::to_string(((r >> 16) % 31) + 1) + ") ^ " + b + ";\n";
-	case 3: return a + " = ROTR32(" + a + ", " + std::to_string(((r >> 16) % 31) + 1) + ") ^ " + b + ";\n";
-	}
+    switch (r % 4)
+    {
+    case 0:
+        return a + " = (" + a + " * 33) + " + b + ";\n";
+    case 1:
+        return a + " = (" + a + " ^ " + b + ") * 33;\n";
+    case 2:
+        return a + " = ROTL32(" + a + ", " + std::to_string(((r >> 16) % 31) + 1) + ") ^ " + b +
+               ";\n";
+    case 3:
+        return a + " = ROTR32(" + a + ", " + std::to_string(((r >> 16) % 31) + 1) + ") ^ " + b +
+               ";\n";
+    }
     return "#error\n";
 }
 
 // Random math between two input values
 std::string ProgPow::math(std::string d, std::string a, std::string b, uint32_t r)
 {
-	switch (r % 11)
-	{
-	case 0: return d + " = " + a + " + " + b + ";\n";
-	case 1: return d + " = " + a + " * " + b + ";\n";
-	case 2: return d + " = mul_hi(" + a + ", " + b + ");\n";
-	case 3: return d + " = min(" + a + ", " + b + ");\n";
-	case 4: return d + " = ROTL32(" + a + ", " + b + " % 32);\n";
-	case 5: return d + " = ROTR32(" + a + ", " + b + " % 32);\n";
-	case 6: return d + " = " + a + " & " + b + ";\n";
-	case 7: return d + " = " + a + " | " + b + ";\n";
-	case 8: return d + " = " + a + " ^ " + b + ";\n";
-	case 9: return d + " = clz(" + a + ") + clz(" + b + ");\n";
-	case 10: return d + " = popcount(" + a + ") + popcount(" + b + ");\n";
-	}
+    switch (r % 11)
+    {
+    case 0:
+        return d + " = " + a + " + " + b + ";\n";
+    case 1:
+        return d + " = " + a + " * " + b + ";\n";
+    case 2:
+        return d + " = mul_hi(" + a + ", " + b + ");\n";
+    case 3:
+        return d + " = min(" + a + ", " + b + ");\n";
+    case 4:
+        return d + " = ROTL32(" + a + ", " + b + " % 32);\n";
+    case 5:
+        return d + " = ROTR32(" + a + ", " + b + " % 32);\n";
+    case 6:
+        return d + " = " + a + " & " + b + ";\n";
+    case 7:
+        return d + " = " + a + " | " + b + ";\n";
+    case 8:
+        return d + " = " + a + " ^ " + b + ";\n";
+    case 9:
+        return d + " = clz(" + a + ") + clz(" + b + ");\n";
+    case 10:
+        return d + " = popcount(" + a + ") + popcount(" + b + ");\n";
+    }
     return "#error\n";
 }
 
 uint32_t ProgPow::fnv1a(uint32_t &h, uint32_t d)
 {
-	return h = (h ^ d) * 0x1000193;
+    return h = (h ^ d) * 0x1000193;
 }
 
 // KISS99 is simple, fast, and passes the TestU01 suite
