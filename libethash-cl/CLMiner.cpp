@@ -352,7 +352,7 @@ void CLMiner::workLoop()
                     if (!initEpoch(w.block))
                         break;  // This will simply exit the thread
                 }
-                if (old_period_seed != period_seed)
+                else if (old_period_seed != period_seed)
                 {
                     compileKernel(period_seed);
                 }
