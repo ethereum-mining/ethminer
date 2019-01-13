@@ -916,6 +916,17 @@ void CLMiner::progpow_search()
 
     m_workSearchStart = steady_clock::now();
 
+#ifdef _DEVELOPER
+    // Optionally log job switch time
+    if (g_logOptions & LOG_SWITCH)
+        cllog << "Switch time: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(
+                     std::chrono::steady_clock::now() - m_workSwitchStart)
+                     .count()
+              << " ms.";
+#endif
+
+
     while (true)
     {
         // If there is an active kernel wait for its completion
