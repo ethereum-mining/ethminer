@@ -329,8 +329,8 @@ public:
         app.add_option("--cuda-grid-size,--cu-grid-size", m_CUSettings.gridSize, "", true)
             ->check(CLI::Range(1, 131072));
 
-        app.add_set(
-            "--cuda-block-size,--cu-block-size", m_CUSettings.blockSize, {32, 64, 128, 256}, "", true);
+        app.add_set("--cuda-block-size,--cu-block-size", m_CUSettings.blockSize,
+            {32, 64, 128, 256, 512}, "", true);
 
         app.add_set(
             "--cuda-parallel-hash,--cu-parallel-hash", m_CUSettings.parallelHash, {1, 2, 4, 8}, "", true);
@@ -908,9 +908,9 @@ public:
                  << "    Use this extended CUDA arguments to fine tune the performance." << endl
                  << "    Be advised default values are best generic findings by developers" << endl
                  << endl
-                 << "    --cu-grid-size      INT [1 .. 131072] Default = 8192" << endl
+                 << "    --cu-grid-size      INT [1 .. 131072] Default = 256" << endl
                  << "                        Set the grid size" << endl
-                 << "    --cu-block-size     UINT {32,64,128,256} Default = 128" << endl
+                 << "    --cu-block-size     UINT {32,64,128,256} Default = 512" << endl
                  << "                        Set the block size" << endl
                  << "    --cu-devices        UINT {} Default not set" << endl
                  << "                        Space separated list of device indexes to use" << endl

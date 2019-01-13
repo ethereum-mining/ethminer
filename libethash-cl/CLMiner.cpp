@@ -300,42 +300,44 @@ void CLMiner::workLoop()
     WorkPackage current;
     current.header = h256();
     uint64_t old_period_seed = -1;
+    int old_epoch = -1;
+    bool started = false;
 
     if (!initDevice())
-    return;
+        return;
 
     try
     {
-        m_queue.enqueueWriteBuffer(
-            m_searchBuffer, CL_FALSE, offsetof(SearchResults, count), sizeof(zerox3), zerox3);
+        // Read results.
+        SearchResults results;
+        results.count = 0;
+
 
         while (!shouldStop())
         {
-
-            // Read results.
-            volatile SearchResults results;
-
-            // no need to read the abort flag.
-            m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, offsetof(SearchResults, count),
-                (m_settings.noExit ? 1 : 2) * sizeof(results.count), (void*)&results.count);
-            if (results.count)
+            if (started)
             {
-                m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0,
-                    results.count * sizeof(results.rslt[0]), (void*)&results);
-                // Reset search buffer if any solution found.
-                if (m_settings.noExit)
+                // no need to read the abort flag.
+                m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, offsetof(SearchResults, count),
+                    (m_settings.noExit ? 1 : 2) * sizeof(results.count), (void*)&results.count);
+                if (results.count)
+                {
+                    m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0,
+                        results.count * sizeof(results.rslt[0]), (void*)&results);
+                    // Reset search buffer if any solution found.
+                    if (m_settings.noExit)
+                        m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE,
+                            offsetof(SearchResults, count), sizeof(results.count), zerox3);
+                }
+                // clean the solution count, hash count, and abort flag
+                if (!m_settings.noExit)
                     m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE,
-                        offsetof(SearchResults, count), sizeof(results.count), zerox3);
+                        offsetof(SearchResults, count), sizeof(zerox3), zerox3);
             }
-            // clean the solution count, hash count, and abort flag
-            if (!m_settings.noExit)
-                m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE,
-                    offsetof(SearchResults, count), sizeof(zerox3), zerox3);
 
             // Wait for work or 3 seconds (whichever the first)
-            const WorkPackage w = work();
-            uint64_t period_seed = w.block / PROGPOW_PERIOD;
-            if (!w)
+            const WorkPackage next = work();
+            if (!next)
             {
                 boost::system_time const timeout =
                     boost::get_system_time() + boost::posix_time::seconds(3);
@@ -344,28 +346,33 @@ void CLMiner::workLoop()
                 continue;
             }
 
-            if (current.header != w.header)
+            if (current.header != next.header)
             {
-
-                if (current.epoch != w.epoch)
+                uint64_t period_seed = next.block / PROGPOW_PERIOD;
+                if (old_epoch != next.epoch)
                 {
-                    if (!initEpoch(w.block))
+                    if (!initEpoch(next.block))
                         break;  // This will simply exit the thread
+                    old_epoch = next.epoch;
+                    old_period_seed = period_seed;
+                    continue;
                 }
                 else if (old_period_seed != period_seed)
                 {
                     compileKernel(period_seed);
+                    old_period_seed = period_seed;
+                    continue;
                 }
-                old_period_seed = period_seed;
 
                 // Upper 64 bits of the boundary.
-                const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
+                const uint64_t target = (uint64_t)(u64)((u256)next.boundary >> 192);
                 assert(target > 0);
 
-                startNonce = w.startNonce;
+                startNonce = next.startNonce;
 
                 // Update header constant buffer.
-                m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
+                m_queue.enqueueWriteBuffer(
+                    m_header, CL_FALSE, 0, next.header.size, next.header.data());
                 // zero the result count
                 m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, offsetof(SearchResults, count),
                     m_settings.noExit ? sizeof(zerox3[0]) : sizeof(zerox3), zerox3);
@@ -385,6 +392,7 @@ void CLMiner::workLoop()
 #endif
             }
 
+            started = true;
             // Run the kernel.
             m_searchKernel.setArg(3, startNonce);
             m_queue.enqueueNDRangeKernel(
@@ -401,19 +409,17 @@ void CLMiner::workLoop()
                         m_lastNonce = nonce;
                         h256 mix;
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-                        auto sol = Solution{
-                            nonce, mix, current, std::chrono::steady_clock::now(), m_index};
 
-                        cllog << EthWhite << "Job: " << w.header.abridged() << " Sol: "
-                              << toHex(sol.nonce, HexPrefix::Add) << EthReset;
+                        Farm::f().submitProof(Solution{
+                            nonce, mix, current, std::chrono::steady_clock::now(), m_index});
 
-                        Farm::f().submitProof(sol);
-
+                        cllog << EthWhite << "Job: " << current.header.abridged() << " Sol: 0x"
+                              << toHex(nonce) << EthReset;
                     }
                 }
             }
 
-            current = w;  // kernel now processing newest work
+            current = next;  // kernel now processing newest work
             current.startNonce = startNonce;
             // Increase start nonce for following kernel execution.
             startNonce += m_settings.globalWorkSize;
@@ -442,7 +448,6 @@ void CLMiner::kick_miner()
     if (!m_settings.noExit)
         m_abortqueue.enqueueWriteBuffer(
             m_searchBuffer, CL_TRUE, offsetof(SearchResults, abort), sizeof(one), &one);
-
     m_new_work_signal.notify_one();
 }
 
@@ -827,7 +832,6 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
 
         m_dagKernel.setArg(1, *m_light);
         m_dagKernel.setArg(2, *m_dag);
-        m_dagKernel.setArg(3, ~0u);
 
         const uint32_t workItems = m_dagItems * 2;  // GPU computes partial 512-bit DAG items.
 
@@ -867,7 +871,12 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
 bool CLMiner::compileKernel(
     uint64_t period_seed)
 {
-    cllog << "Compiling OpenCL kernel";
+    cllog << "Compiling OpenCL kernel"
+#ifdef DEV_BUILD
+          << ", seed " << period_seed
+#endif
+        ;
+
     // patch source code
     // note: The kernels here are simply compiled version of the respective .cl kernels
     // into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime

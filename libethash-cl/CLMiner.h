@@ -60,6 +60,7 @@ protected:
 private:
     
     void workLoop() override;
+    bool compileKernel(uint64_t prog_seed);
 
     cl::Context m_context;
     cl::CommandQueue m_queue;
@@ -81,7 +82,6 @@ private:
     cl::Program m_program;
     char m_options[256] = {0};
     int m_computeCapability = 0;
-    bool compileKernel(uint64_t prog_seed);
 };
 
 }  // namespace eth
