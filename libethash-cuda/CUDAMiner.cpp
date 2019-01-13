@@ -508,12 +508,12 @@ void CUDAMiner::search(
                     h256 mix;
                     uint64_t nonce = nonce_base + buffer.result[i].gid;
                     memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
-                    auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
 
-                    cudalog << EthWhite << "Job: " << w.header.abridged() << " Sol: "
-                            << toHex(sol.nonce, HexPrefix::Add) << EthReset;
+                    Farm::f().submitProof(
+                        Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index});
 
-                    Farm::f().submitProof(sol);
+                    cudalog << EthWhite << "Job: " << w.header.abridged() << " Sol: 0x"
+                            << toHex(nonce) << EthReset;
                 }
             }
 

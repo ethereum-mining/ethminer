@@ -431,7 +431,7 @@ static void keccak_f1600_round(uint2* a, uint r)
 	chi(a, 20, t);
 }
 
-static void keccak_f1600_no_absorb(uint2* a, uint out_size, uint isolate)
+static void keccak_f1600_no_absorb(uint2* a, uint out_size)
 {
 	// Originally I unrolled the first and last rounds to interface
 	// better with surrounding code, however I haven't done this
@@ -448,11 +448,7 @@ static void keccak_f1600_no_absorb(uint2* a, uint out_size, uint isolate)
 		// much we try and help the compiler save VGPRs because it seems to throw
 		// that information away, hence the implementation of keccak here
 		// doesn't bother.
-		if (isolate)
-		{
-			keccak_f1600_round(a, r++);
-			//if (r == 23) o = out_size;
-		}
+		keccak_f1600_round(a, r++);
 	} 
 	
 
@@ -489,7 +485,7 @@ typedef struct
 	uint4 uint4s[128 / sizeof(uint4)];
 } hash128_t;
 
-static void SHA3_512(uint2* s, uint isolate)
+static void SHA3_512(uint2* s)
 {
 	for (uint i = 8; i != 25; ++i)
 	{
@@ -497,10 +493,10 @@ static void SHA3_512(uint2* s, uint isolate)
 	}
 	s[8].x = 0x00000001;
 	s[8].y = 0x80000000;
-	keccak_f1600_no_absorb(s, 8, isolate);
+	keccak_f1600_no_absorb(s, 8);
 }
 
-__kernel void ethash_calculate_dag_item(uint start, __global hash64_t const* g_light, __global hash64_t * g_dag, uint isolate)
+__kernel void ethash_calculate_dag_item(uint start, __global hash64_t const* g_light, __global hash64_t * g_dag)
 {
 	uint const node_index = start + get_global_id(0);
 	if (node_index * sizeof(hash64_t) >= PROGPOW_DAG_BYTES) return;
@@ -508,7 +504,7 @@ __kernel void ethash_calculate_dag_item(uint start, __global hash64_t const* g_l
 	hash200_t dag_node;
 	copy(dag_node.uint4s, g_light[node_index % LIGHT_WORDS].uint4s, 4);
 	dag_node.words[0] ^= node_index;
-	SHA3_512(dag_node.uint2s, isolate);
+	SHA3_512(dag_node.uint2s);
 
 	for (uint i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
 		uint parent_index = fnv(node_index ^ i, dag_node.words[i % NODE_WORDS]) % LIGHT_WORDS;
@@ -517,6 +513,6 @@ __kernel void ethash_calculate_dag_item(uint start, __global hash64_t const* g_l
 			dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], g_light[parent_index].uint4s[w]);
 		}
 	}
-	SHA3_512(dag_node.uint2s, isolate);
+	SHA3_512(dag_node.uint2s);
 	copy(g_dag[node_index].uint4s, dag_node.uint4s, 4);
 }
