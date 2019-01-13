@@ -121,19 +121,13 @@ void Miner::resume(MinerPauseEnum fromwhat)
 
 float Miner::RetrieveHashRate() noexcept
 {
-    return m_hashRate.load(std::memory_order_relaxed);
+    bool ex = true;
+    if (!m_hrLive.compare_exchange_strong(ex, false))
+        m_hr.store(0.0f, memory_order_relaxed);
+
+    return m_hr.load(std::memory_order_relaxed);
 }
 
-void Miner::TriggerHashRateUpdate() noexcept
-{
-    bool b = false;
-    if (m_hashRateUpdate.compare_exchange_strong(b, true))
-        return;
-    // GPU didn't respond to last trigger, assume it's dead.
-    // This can happen on CUDA if:
-    //   runtime of --cuda-grid-size * --cuda-streams exceeds time of m_collectInterval
-    m_hashRate = 0.0;
-}
 
 bool Miner::initEpoch()
 {
@@ -262,20 +256,21 @@ void Miner::minerLoop()
     unloadProgPoWKernel();
 }
 
-void Miner::updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept
+void Miner::updateHashRate(uint32_t _hashes, uint64_t _microseconds, float _alpha) noexcept
 {
-    m_groupCount += _increment;
-    bool b = true;
-    if (!m_hashRateUpdate.compare_exchange_strong(b, false))
-        return;
-    using namespace std::chrono;
-    auto t = steady_clock::now();
-    auto us = duration_cast<microseconds>(t - m_hashTime).count();
-    m_hashTime = t;
+    // Signal we've received an update
+    m_hrLive.store(true, memory_order_relaxed);
 
-    m_hashRate.store(
-        us ? (float(m_groupCount * _groupSize) * 1.0e6f) / us : 0.0f, std::memory_order_relaxed);
-    m_groupCount = 0;
+    // If the sampling interval is too small treat this call as 
+    // as simple "I'm alive" call.
+    // Minimum sampling interval is 1s.
+    if (_microseconds < 1000000ULL)
+        return;
+
+    float instantHr = float(_hashes * 1.0e6f) / _microseconds;
+    float avgHr = (m_hr.load(memory_order_relaxed) * _alpha) + (instantHr * (1.0f - _alpha));
+    m_hr.store(avgHr, memory_order_relaxed);
+    
 }
 
 }  // namespace eth

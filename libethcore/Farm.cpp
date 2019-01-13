@@ -678,8 +678,9 @@ void Farm::collectData(const boost::system::error_code& ec)
             m_telemetry.miners.at(minerIdx).sensors.fanP = fanpcnt;
             m_telemetry.miners.at(minerIdx).sensors.powerW = powerW / ((double)1000.0);
         }
+
         m_telemetry.farm.hashrate = farm_hr;
-        miner->TriggerHashRateUpdate();
+
     }
 
     // Resubmit timer for another loop

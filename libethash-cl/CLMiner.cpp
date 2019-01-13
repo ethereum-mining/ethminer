@@ -729,8 +729,12 @@ bool CLMiner::initEpoch_internal()
 
 void CLMiner::ethash_search()
 {
+    using namespace std::chrono;
     using clock = std::chrono::steady_clock;
     clock::time_point start;
+
+    m_workSearchDuration = 0;
+    m_workHashes = 0;
 
     m_queue.enqueueWriteBuffer(
         m_header, CL_FALSE, 0, m_work_active.header.size, m_work_active.header.data());
@@ -752,6 +756,19 @@ void CLMiner::ethash_search()
     }
 
     volatile search_results results;
+
+    
+    m_workSearchStart = steady_clock::now();
+
+#ifdef _DEVELOPER
+    // Optionally log job switch time
+    if (g_logOptions & LOG_SWITCH)
+        cllog << "Switch time: "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::steady_clock::now() - m_workSwitchStart)
+                       .count()
+                << " ms.";
+#endif
 
     while (true)
     {
@@ -809,9 +826,12 @@ void CLMiner::ethash_search()
             found_count = std::min((unsigned)results.count, MAX_SEARCH_RESULTS);
             m_activeKernel.store(false, memory_order_relaxed);
 
-            // Update the hash rate and increase startNonce accordingly
-            updateHashRate(m_settings.localWorkSize, results.rounds);
-            startNonce += (m_settings.localWorkSize * results.rounds + 1);
+            // Accumulate hashrate data
+            m_workSearchDuration =
+                duration_cast<microseconds>(steady_clock::now() - m_workSearchStart).count();
+            m_workHashes += (m_settings.localWorkSize * results.rounds);
+
+            startNonce = m_workHashes + 1;
 
         }
 
@@ -851,6 +871,9 @@ void CLMiner::ethash_search()
             found_count = 0;
         }
 
+        // Update the hash rate
+        updateHashRate(m_workHashes, m_workSearchDuration);
+
         if (!m_activeKernel.load(memory_order_relaxed))
             break;
 
@@ -861,8 +884,13 @@ void CLMiner::ethash_search()
 
 void CLMiner::progpow_search()
 {
+    using namespace std::chrono;
+
     using clock = std::chrono::steady_clock;
     clock::time_point start;
+
+    m_workSearchDuration = 0;
+    m_workHashes = 0;
 
     m_queue.enqueueWriteBuffer(
         m_header, CL_FALSE, 0, m_work_active.header.size, m_work_active.header.data());
@@ -885,6 +913,8 @@ void CLMiner::progpow_search()
     }
 
     volatile search_results results;
+
+    m_workSearchStart = steady_clock::now();
 
     while (true)
     {
@@ -943,9 +973,12 @@ void CLMiner::progpow_search()
             found_count = std::min((unsigned)results.count, MAX_SEARCH_RESULTS);
             m_activeKernel.store(false, memory_order_relaxed);
 
-            // Update the hash rate and increase startNonce accordingly
-            updateHashRate(m_settings.localWorkSize, results.rounds);
-            startNonce += (m_settings.localWorkSize * results.rounds + 1);
+            // Accumulate hashrate data
+            m_workSearchDuration =
+                duration_cast<microseconds>(steady_clock::now() - m_workSearchStart).count();
+            m_workHashes += (m_settings.localWorkSize * results.rounds);
+
+            startNonce += m_workHashes + 1;
 
         }
 
@@ -985,6 +1018,9 @@ void CLMiner::progpow_search()
 
             found_count = 0;
         }
+
+        // Update the hash rate
+        updateHashRate(m_workHashes, m_workSearchDuration);
 
         if (!m_activeKernel.load(memory_order_relaxed))
             break;

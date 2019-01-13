@@ -432,7 +432,6 @@ public:
      */
     float RetrieveHashRate() noexcept;
 
-    void TriggerHashRateUpdate() noexcept;
 
 protected:
     /**
@@ -453,7 +452,8 @@ protected:
     // This is the effective miner Loop
     void minerLoop();
 
-    void updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept;
+    // Collects and averages (EMA) hashrate
+    void updateHashRate(uint32_t _hashes, uint64_t _microseconds, float _alpha = 0.85f) noexcept;
 
     static unsigned s_minersCount;   // Total Number of Miners
     static unsigned s_dagLoadMode;   // Way dag should be loaded
@@ -480,6 +480,10 @@ protected:
     WorkPackage m_work_latest, m_work_active;
     uint64_t m_current_target = 0;
 
+    std::chrono::steady_clock::time_point m_workSearchStart;  // Actual start point of hashing time
+    uint64_t m_workSearchDuration = 0;                        // Total search duration on a job
+    uint32_t m_workHashes;                                    // Total hashes processed on a job
+
 private:
     bitset<MinerPauseEnum::Pause_MAX> m_pauseFlags;
 
@@ -487,12 +491,10 @@ private:
     virtual void ethash_search() = 0;
     virtual void progpow_search() = 0;
     virtual void compileProgPoWKernel(int _block, int _dagelms) = 0;
-    virtual void unloadProgPoWKernel() {};
+    virtual void unloadProgPoWKernel(){};
 
-    std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
-    std::atomic<float> m_hashRate = {0.0};
-    uint64_t m_groupCount = 0;
-    atomic<bool> m_hashRateUpdate = {false};
+    std::atomic<float> m_hr = {0.0};
+    std::atomic<bool> m_hrLive = {false};
 };
 
 }  // namespace eth

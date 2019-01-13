@@ -173,6 +173,7 @@ void CUDAMiner::workLoop()
 
     m_search_results.resize(m_settings.streams);
     m_streams.resize(m_settings.streams);
+    m_active_streams.resize(m_settings.streams, false);
 
     if (!initDevice())
         return;
@@ -402,9 +403,14 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
 
 void CUDAMiner::ethash_search()
 {
+    using namespace std::chrono;
+    
+    m_workSearchDuration = 0;
+    m_workHashes = 0;
+
     uint64_t startNonce, target;
+
     startNonce = m_work_active.startNonce;
-    flags activeStreams(m_settings.streams);
 
     set_header(*reinterpret_cast<hash32_t const*>(m_work_active.header.data()));
 
@@ -425,27 +431,43 @@ void CUDAMiner::ethash_search()
         launchIndex++;
         streamIndex = launchIndex % m_settings.streams;
         cudaStream_t stream = m_streams.at(streamIndex);
+
         volatile search_results& buffer(*m_search_results.at(streamIndex));
         
         if (launchIndex >= m_settings.streams || !m_new_work.load(memory_order_relaxed))
         {
-            if (activeStreams.test(streamIndex))
+            if (m_active_streams.test(streamIndex))
             {
                 CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
                 found_count = std::min((unsigned)buffer.count, MAX_SEARCH_RESULTS);
                 buffer.count = 0;
-                activeStreams.reset(streamIndex);
-
-                // Update the hash rate
-                updateHashRate(m_batch_size, 1);
+                m_active_streams.reset(streamIndex);
+                m_workSearchDuration =
+                    duration_cast<microseconds>(steady_clock::now() - m_workSearchStart).count();
+                m_workHashes += m_batch_size;
             }
         }
 
         if (!m_new_work.load(memory_order_relaxed))
         {
+
+            if (launchIndex == 1)
+            {
+                m_workSearchStart = steady_clock::now();
+#ifdef _DEVELOPER
+                // Optionally log job switch time
+                if (g_logOptions & LOG_SWITCH)
+                    cudalog << "Switch time: "
+                            << std::chrono::duration_cast<std::chrono::milliseconds>(
+                                   std::chrono::steady_clock::now() - m_workSwitchStart)
+                                   .count()
+                            << " ms.";
+#endif
+            }
+
             run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer,
                 startNonce, m_settings.parallelHash);
-            activeStreams.set(streamIndex);
+            m_active_streams.set(streamIndex);
             startNonce += m_batch_size;
         }
 
@@ -468,32 +490,29 @@ void CUDAMiner::ethash_search()
             }
         }
 
-        if (!activeStreams.any())
+        // Update the hash rate
+        updateHashRate(m_workHashes, m_workSearchDuration, 0.1f);
+
+        if (!m_active_streams.any())
             break;
 
     }
 
-
-#ifdef _DEVELOPER
-    // Optionally log job switch time
-    if (!shouldStop() && (g_logOptions & LOG_SWITCH))
-        cudalog << "Switch time: "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(
-                       std::chrono::steady_clock::now() - m_workSwitchStart)
-                       .count()
-                << " ms.";
-#endif
 }
 
 void CUDAMiner::progpow_search()
 {
     bool hack_false = false;
 
+    using namespace std::chrono;
+
+    m_workSearchDuration = 0;
+    m_workHashes = 0;
+
     uint64_t startNonce, target;
+
     startNonce = m_work_active.startNonce;
     
-    flags activeStreams(m_settings.streams);
-
     hash32_t header = *reinterpret_cast<hash32_t const*>(m_work_active.header.data());
     CUDA_SAFE_CALL(cudaMemcpy(d_pheader, &header, sizeof(hash32_t), cudaMemcpyHostToDevice));
 
@@ -513,24 +532,40 @@ void CUDAMiner::progpow_search()
         launchIndex++;
         streamIndex = launchIndex % m_settings.streams;
         cudaStream_t stream = m_streams.at(streamIndex);
+
         volatile search_results* buffer = m_search_results.at(streamIndex);
 
         if (launchIndex >= m_settings.streams || !m_new_work.load(memory_order_relaxed))
         {
-            if (activeStreams.test(streamIndex))
+            if (m_active_streams.test(streamIndex))
             {
                 CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
                 found_count = std::min((unsigned)buffer->count, MAX_SEARCH_RESULTS);
                 buffer->count = 0;
-                activeStreams.reset(streamIndex);
-
-                // Update the hash rate
-                updateHashRate(m_batch_size, 1);
+                m_active_streams.reset(streamIndex);
+                m_workSearchDuration =
+                    duration_cast<microseconds>(steady_clock::now() - m_workSearchStart).count();
+                m_workHashes += m_batch_size;
             }
         }
 
         if (!m_new_work.load(memory_order_relaxed))
         {
+            if (launchIndex == 1)
+            {
+                m_workSearchStart = steady_clock::now();
+
+#ifdef _DEVELOPER
+                // Optionally log job switch time
+                if (g_logOptions & LOG_SWITCH)
+                    cudalog << "Switch time: "
+                            << std::chrono::duration_cast<std::chrono::milliseconds>(
+                                   std::chrono::steady_clock::now() - m_workSwitchStart)
+                                   .count()
+                            << " ms.";
+#endif
+            }
+
             // Run the batch for this stream
             uint64_t batchNonce = startNonce;
             void* args[] = {
@@ -540,7 +575,7 @@ void CUDAMiner::progpow_search()
                 0,                                                            // shared mem
                 stream,                                                       // stream
                 args, 0));                                                    // arguments
-            activeStreams.set(streamIndex);
+            m_active_streams.set(streamIndex);
             startNonce += m_batch_size;
         }
 
@@ -566,18 +601,12 @@ void CUDAMiner::progpow_search()
             found_count = 0;
         }
 
-        if (!activeStreams.any())
+        // Update the hash rate
+        updateHashRate(m_workHashes, m_workSearchDuration);
+
+        if (!m_active_streams.any())
             break;
 
     }
 
-#ifdef _DEVELOPER
-    // Optionally log job switch time
-    if (!shouldStop() && (g_logOptions & LOG_SWITCH))
-        cudalog << "Switch time: "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(
-                       std::chrono::steady_clock::now() - m_workSwitchStart)
-                       .count()
-                << " ms.";
-#endif
 }

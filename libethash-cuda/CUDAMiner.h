@@ -28,6 +28,8 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 #include <cuda.h>
 #include <functional>
 
+#include <boost/dynamic_bitset.hpp>
+
 namespace dev
 {
 namespace eth
@@ -69,10 +71,8 @@ private:
     uint64_t* d_ptarget = NULL;
 
     std::vector<cudaStream_t> m_streams;
+    boost::dynamic_bitset<> m_active_streams;
 
-    static const size_t size = sizeof(unsigned long) * CHAR_BIT;
-    typedef std::bitset<size> flags;
-    
     CUSettings m_settings;
 
     const uint32_t m_batch_size;
