@@ -292,7 +292,7 @@ struct SearchResults
 void CLMiner::workLoop()
 {
     // Memory for zero-ing buffers. Cannot be static or const because crashes on macOS.
-    uint32_t zerox3[3] = {0, 0, 0};
+    static uint32_t zerox3[3] = {0, 0, 0};
 
     uint64_t startNonce = 0;
 
@@ -301,7 +301,6 @@ void CLMiner::workLoop()
     current.header = h256();
     uint64_t old_period_seed = -1;
     int old_epoch = -1;
-    bool started = false;
 
     if (!initDevice())
         return;
@@ -310,30 +309,25 @@ void CLMiner::workLoop()
     {
         // Read results.
         SearchResults results;
-        results.count = 0;
 
+        // zero the result count
+        m_queue.enqueueWriteBuffer(
+            m_searchBuffer, CL_TRUE, offsetof(SearchResults, count), sizeof(zerox3), zerox3);
 
         while (!shouldStop())
         {
-            if (started)
+            // no need to read the abort flag.
+            m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, offsetof(SearchResults, count),
+                2 * sizeof(results.count), (void*)&results.count);
+            if (results.count)
             {
-                // no need to read the abort flag.
-                m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, offsetof(SearchResults, count),
-                    (m_settings.noExit ? 1 : 2) * sizeof(results.count), (void*)&results.count);
-                if (results.count)
-                {
-                    m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0,
-                        results.count * sizeof(results.rslt[0]), (void*)&results);
-                    // Reset search buffer if any solution found.
-                    if (m_settings.noExit)
-                        m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE,
-                            offsetof(SearchResults, count), sizeof(results.count), zerox3);
-                }
-                // clean the solution count, hash count, and abort flag
-                if (!m_settings.noExit)
-                    m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE,
-                        offsetof(SearchResults, count), sizeof(zerox3), zerox3);
+                m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0,
+                    results.count * sizeof(results.rslt[0]), (void*)&results);
             }
+            // clean the solution count, hash count, and abort flag
+            m_queue.enqueueWriteBuffer(
+                m_searchBuffer, CL_FALSE, offsetof(SearchResults, count), sizeof(zerox3), zerox3);
+            m_kickEnabled.store(true, std::memory_order_relaxed);
 
             // Wait for work or 3 seconds (whichever the first)
             const WorkPackage next = work();
@@ -371,11 +365,7 @@ void CLMiner::workLoop()
                 startNonce = next.startNonce;
 
                 // Update header constant buffer.
-                m_queue.enqueueWriteBuffer(
-                    m_header, CL_FALSE, 0, next.header.size, next.header.data());
-                // zero the result count
-                m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, offsetof(SearchResults, count),
-                    m_settings.noExit ? sizeof(zerox3[0]) : sizeof(zerox3), zerox3);
+                m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, 32, next.header.data());
 
                 m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
                 m_searchKernel.setArg(1, m_header);        // Supply header buffer to kernel.
@@ -392,7 +382,6 @@ void CLMiner::workLoop()
 #endif
             }
 
-            started = true;
             // Run the kernel.
             m_searchKernel.setArg(3, startNonce);
             m_queue.enqueueNDRangeKernel(
@@ -404,18 +393,14 @@ void CLMiner::workLoop()
                 for (uint32_t i = 0; i < results.count; i++)
                 {
                     uint64_t nonce = current.startNonce + results.rslt[i].gid;
-                    if (nonce != m_lastNonce)
-                    {
-                        m_lastNonce = nonce;
-                        h256 mix;
-                        memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
+                    h256 mix;
+                    memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
 
-                        Farm::f().submitProof(Solution{
-                            nonce, mix, current, std::chrono::steady_clock::now(), m_index});
+                    Farm::f().submitProof(Solution{
+                        nonce, mix, current, std::chrono::steady_clock::now(), m_index});
 
-                        cllog << EthWhite << "Job: " << current.header.abridged() << " Sol: 0x"
-                              << toHex(nonce) << EthReset;
-                    }
+                    cllog << EthWhite << "Job: " << current.header.abridged() << " Sol: 0x"
+                          << toHex(nonce) << EthReset;
                 }
             }
 
@@ -424,15 +409,11 @@ void CLMiner::workLoop()
             // Increase start nonce for following kernel execution.
             startNonce += m_settings.globalWorkSize;
             // Report hash count
-            if (m_settings.noExit)
-                updateHashRate(m_settings.globalWorkSize, 1);
-            else
-                updateHashRate(m_settings.localWorkSize, results.hashCount);
+            updateHashRate(m_settings.localWorkSize, results.hashCount);
         }
 
         m_queue.finish();
-        if (!m_settings.noExit)
-            m_abortqueue.finish();
+        m_abortqueue.finish();
     }
     catch (cl::Error const& _e)
     {
@@ -444,10 +425,13 @@ void CLMiner::workLoop()
 void CLMiner::kick_miner()
 {
     // Memory for abort Cannot be static because crashes on macOS.
-    const uint32_t one = 1;
-    if (!m_settings.noExit)
+    bool f = true;
+    if (m_kickEnabled.compare_exchange_weak(f, false, std::memory_order_relaxed))
+    {
+        static const uint32_t one = 1;
         m_abortqueue.enqueueWriteBuffer(
             m_searchBuffer, CL_TRUE, offsetof(SearchResults, abort), sizeof(one), &one);
+    }
     m_new_work_signal.notify_one();
 }
 
@@ -610,8 +594,7 @@ bool CLMiner::initDevice()
     // create context
     m_context = cl::Context(m_device);
     m_queue = cl::CommandQueue(m_context, m_device);
-    if (!m_settings.noExit)
-        m_abortqueue = cl::CommandQueue(m_context, m_device);
+    m_abortqueue = cl::CommandQueue(m_context, m_device);
 
     ETHCL_LOG("Creating buffers");
     // create buffer for header
@@ -757,7 +740,7 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
             std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
             fname_strm << boost::dll::program_location().parent_path().string()
                        << "/kernels/progpow_" << device_name << "_lws" << m_settings.localWorkSize
-                       << (m_settings.noExit ? ".bin" : "_exit.bin");
+                       << ".bin";
             cllog << "Loading binary kernel " << fname_strm.str();
             try
             {
@@ -832,6 +815,7 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
 
         m_dagKernel.setArg(1, *m_light);
         m_dagKernel.setArg(2, *m_dag);
+        m_dagKernel.setArg(3, -1);
 
         const uint32_t workItems = m_dagItems * 2;  // GPU computes partial 512-bit DAG items.
 
@@ -872,10 +856,7 @@ bool CLMiner::compileKernel(
     uint64_t period_seed)
 {
     cllog << "Compiling OpenCL kernel"
-#ifdef DEV_BUILD
-          << ", seed " << period_seed
-#endif
-        ;
+          << ", seed " << period_seed;
 
     // patch source code
     // note: The kernels here are simply compiled version of the respective .cl kernels
@@ -915,25 +896,20 @@ bool CLMiner::compileKernel(
 
     // create miner OpenCL program
     cl::Program::Sources sources{{code.data(), code.size()}};
-    cl::Program program(m_context, sources);  //, binaryProgram;
+    m_program = cl::Program(m_context, sources);
     try
     {
-        program.build({m_device}, m_options);
+        m_program.build({m_device}, m_options);
     }
     catch (cl::BuildError const& buildErr)
     {
         cwarn << "OpenCL kernel build log:\n"
-              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
+              << m_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
         cwarn << "OpenCL kernel build error (" << buildErr.err() << "):\n" << buildErr.what();
         pause(MinerPauseEnum::PauseDueToInitEpochError);
         return true;
     }
-    m_program = program;
-
-    // If we have a binary kernel to use, let's try it
-    // otherwise just do a normal opencl load
     m_searchKernel = cl::Kernel(m_program, "ethash_search");
-
 
     m_searchKernel.setArg(1, m_header);
     m_searchKernel.setArg(5, 0);

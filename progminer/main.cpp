@@ -318,8 +318,6 @@ public:
 
         app.add_set("--cl-local-work", m_CLSettings.localWorkSize, {64, 128, 256}, "", true);
 
-        app.add_flag("--cl-noexit", m_CLSettings.noExit, "");
-
 #endif
 
 #if ETH_ETHASHCUDA
@@ -896,9 +894,7 @@ public:
                  << "                        Set the global work size multiplier" << endl
                  << "                        Value will be adjusted to nearest power of 2" << endl
                  << "    --cl-local-work     UINT {64,128,256} Default = 128" << endl
-                 << "                        Set the local work size multiplier" << endl
-                 << "    --cl-noexit         FLAG" << endl
-                 << "                        Don't use fast exit algorithm" << endl;
+                 << "                        Set the local work size multiplier" << endl;
         }
 
         if (ctx == "cu")

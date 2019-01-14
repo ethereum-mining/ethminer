@@ -339,11 +339,9 @@ void CUDAMiner::compileKernel(
     CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_deviceDescriptor.cuDeviceIndex));
 
     cudalog << "Compiling CUDA kernel"
-#ifdef DEV_BUILD
             << ", seed " << period_seed << ", arch " << to_string(device_props.major) << '.'
-            << to_string(device_props.minor)
-#endif
-        ;
+            << to_string(device_props.minor);
+
     const char* name = "progpow_search";
 
     std::string text = ProgPow::getKern(period_seed, ProgPow::KERNEL_CUDA);
@@ -433,7 +431,6 @@ void CUDAMiner::search(
         set_target(target);
         m_current_target = target;
     }
-
     hash32_t current_header = *reinterpret_cast<hash32_t const *>(header);
     hash64_t* dag;
     get_constants(&dag, NULL, NULL, NULL);
