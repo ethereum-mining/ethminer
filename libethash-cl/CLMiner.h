@@ -72,6 +72,16 @@ private:
     vector<cl::Buffer> m_header;
     vector<cl::Buffer> m_searchBuffer;
 
+    void clear_buffer() {
+        m_dag.clear();
+        m_light.clear();
+        m_header.clear();
+        m_searchBuffer.clear();
+        m_queue.clear();
+        m_context.clear();
+        m_abortqueue.clear();
+    }
+
     CLSettings m_settings;
 
     unsigned m_dagItems = 0;

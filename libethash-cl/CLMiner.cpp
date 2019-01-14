@@ -316,6 +316,10 @@ void CLMiner::workLoop()
                     (m_settings.noExit ? 1 : 2) * sizeof(results.count), (void*)&results.count);
                 if (results.count)
                 {
+                    if (results.count > c_maxSearchResults) {
+                        results.count = c_maxSearchResults;
+                    }
+
                     m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
                         results.count * sizeof(results.rslt[0]), (void*)&results);
                     // Reset search buffer if any solution found.
@@ -426,10 +430,13 @@ void CLMiner::workLoop()
 
         if (m_queue.size())
             m_queue[0].finish();
+
+        clear_buffer();
     }
     catch (cl::Error const& _e)
     {
         string _what = ethCLErrorHelper("OpenCL Error", _e);
+        clear_buffer();
         throw std::runtime_error(_what);
     }
 }
@@ -658,6 +665,7 @@ bool CLMiner::initDevice()
     s << " Memory : " << dev::getFormattedMemory((double)m_deviceDescriptor.totalMemory);
     cllog << s.str();
 
+    cllog << "Memory in bytes : " << m_deviceDescriptor.totalMemory;
     if ((m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Amd) &&
         (m_deviceDescriptor.clMaxComputeUnits != 36))
     {
