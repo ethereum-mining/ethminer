@@ -154,9 +154,9 @@ void PoolManager::setClientHandlers()
 
     p_client->onWorkReceived([&](WorkPackage const& wp) {
 
-        // Should not happen !
-        if (!wp)
-            return;
+        // client will send dummy work to pause the workers
+        // if (!wp)    
+        //     return;
 
         int _currentEpoch = m_currentWp.epoch;
         bool newEpoch = (_currentEpoch == -1);
