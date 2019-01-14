@@ -254,6 +254,9 @@ public:
 
         app.add_option("--farm-retries", m_PoolSettings.connectionMaxRetries, "", true)->check(CLI::Range(0, 99999));
 
+        app.add_option("--retry-delay", m_PoolSettings.delayBeforeRetry, "", true)
+            ->check(CLI::Range(1, 999));
+        
         app.add_option("--work-timeout", m_PoolSettings.noWorkTimeout, "", true)
             ->check(CLI::Range(180, 99999));
 

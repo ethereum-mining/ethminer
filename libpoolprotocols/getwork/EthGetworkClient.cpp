@@ -77,7 +77,9 @@ void EthGetworkClient::disconnect()
 {
     // Release session
     m_connected.store(false, memory_order_relaxed);
-    m_conn->addDuration(m_session->duration());
+    if (m_session) {
+        m_conn->addDuration(m_session->duration());
+    }
     m_session = nullptr;
 
     m_connecting.store(false, std::memory_order_relaxed);

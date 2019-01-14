@@ -71,6 +71,7 @@ void PoolManager::setClientHandlers()
             }
 
             cnote << "Established connection to " << m_selectedHost;
+            m_connectionAttempt = 0;
 
             // Reset current WorkPackage
             m_currentWp.job.clear();
@@ -415,7 +416,12 @@ void PoolManager::rotateConnect()
     if (!m_Settings.connections.empty() && m_Settings.connections.at(m_activeConnectionIdx)->Host() != "exit")
     {
         if (p_client)
+        {
             p_client = nullptr;
+            cnote << "Retry " << m_connectionAttempt << ", sleep "<< m_Settings.delayBeforeRetry << "s before re-connect";
+            // sleep before retry 
+            std::this_thread::sleep_for(std::chrono::seconds(m_Settings.delayBeforeRetry));
+        }           
 
         if (m_Settings.connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::GETWORK)
             p_client =
