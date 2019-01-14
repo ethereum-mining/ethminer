@@ -12,7 +12,8 @@ PoolManager::PoolManager(PoolSettings _settings)
   : m_Settings(std::move(_settings)),
     m_io_strand(g_io_service),
     m_failovertimer(g_io_service),
-    m_submithrtimer(g_io_service)
+    m_submithrtimer(g_io_service),
+    m_reconnecttimer(g_io_service)
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::PoolManager() begin");
 
@@ -154,9 +155,9 @@ void PoolManager::setClientHandlers()
 
     p_client->onWorkReceived([&](WorkPackage const& wp) {
 
-        // client will send dummy work to pause the workers
-        // if (!wp)    
-        //     return;
+        // Should not happen !
+        if (!wp)
+            return; 
 
         int _currentEpoch = m_currentWp.epoch;
         bool newEpoch = (_currentEpoch == -1);
@@ -244,6 +245,7 @@ void PoolManager::stop()
             // Stop timing actors
             m_failovertimer.cancel();
             m_submithrtimer.cancel();
+            m_reconnecttimer.cancel();
 
             if (Farm::f().isMining())
             {
@@ -418,9 +420,6 @@ void PoolManager::rotateConnect()
         if (p_client)
         {
             p_client = nullptr;
-            cnote << "Retry " << m_connectionAttempt << ", sleep "<< m_Settings.delayBeforeRetry << "s before re-connect";
-            // sleep before retry 
-            std::this_thread::sleep_for(std::chrono::seconds(m_Settings.delayBeforeRetry));
         }           
 
         if (m_Settings.connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::GETWORK)
@@ -443,8 +442,20 @@ void PoolManager::rotateConnect()
                          to_string(m_Settings.connections.at(m_activeConnectionIdx)->Port());
         p_client->setConnection(m_Settings.connections.at(m_activeConnectionIdx));
         cnote << "Selected pool " << m_selectedHost;
-
-        p_client->connect();
+ 
+        
+        if (m_connectionAttempt > 1) 
+        {
+            // sleep before retry 
+            cnote << "Connect attempt " << m_connectionAttempt << ", sleep "<< m_Settings.delayBeforeRetry << "s before re-connect";
+            m_reconnecttimer.expires_from_now(boost::posix_time::seconds(m_Settings.delayBeforeRetry));
+            m_reconnecttimer.async_wait(m_io_strand.wrap(boost::bind(
+                &PoolManager::reconnecttimer_elapsed, this, boost::asio::placeholders::error)));
+        }
+        else
+        {
+            p_client->connect();
+        }
     }
     else
     {
@@ -509,6 +520,20 @@ void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
             m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_Settings.hashRateInterval));
             m_submithrtimer.async_wait(m_io_strand.wrap(boost::bind(
                 &PoolManager::submithrtimer_elapsed, this, boost::asio::placeholders::error)));
+        }
+    }
+}
+
+void PoolManager::reconnecttimer_elapsed(const boost::system::error_code& ec)
+{
+    if (!ec)
+    {
+        if (m_running.load(std::memory_order_relaxed))
+        {
+            if (p_client && !p_client->isConnected())
+            {
+                p_client->connect();
+            }
         }
     }
 }
