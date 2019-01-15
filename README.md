@@ -19,6 +19,7 @@
 * stratum mining without proxy
 * OpenCL devices picking
 * farm failover (getwork + stratum)
+* Ethereum-based ProgPoW implementations supported only, doesn't support previous ethash version or Bitcoin-based forks.
 
 
 ## Table of Contents
@@ -62,13 +63,15 @@ For a full list of available command, please run:
 progminer --help
 ```
 
+Note that Progminer doesn't support mining Bitcoin-based ProgPoW implementations such as Bitcoin Interest, etc. (See https://github.com/gangnamtestnet/progminer/issues/9 for more information)
+
 ### Examples connecting to pools
 
 Connecting to [progpool.pro](https://progpool.pro):
 
-`./progminer -P stratum://0xaa16a61dec2d3e260cd1348e48cd259a5fb03f49.test@progpool.pro:8008` or
+`./progminer -P stratum1+tcp://0xaa16a61dec2d3e260cd1348e48cd259a5fb03f49.test@progpool.pro:8008` or
 
-`progminer.exe -P stratum://0xaa16a61dec2d3e260cd1348e48cd259a5fb03f49.test@progpool.pro:8008`
+`progminer.exe -P stratum1+tcp://0xaa16a61dec2d3e260cd1348e48cd259a5fb03f49.test@progpool.pro:8008`
 
 ## Maintainers & Authors
 
