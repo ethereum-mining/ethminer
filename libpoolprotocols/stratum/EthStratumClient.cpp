@@ -570,7 +570,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     }
 
     // Clean buffer from any previous stale data
-    m_sendBuffer.consume(4096);
+    m_sendBuffer.consume(m_sendBuffer.capacity());
     clear_response_pleas();
 
     /*
