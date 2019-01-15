@@ -323,7 +323,7 @@ void CUDAMiner::search(
         buffer.count = 0;
 
         // Run the batch for this stream
-        run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce, m_settings.parallelHash);
+        run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce);
     }
 
     // process stream batches until we get new work.
@@ -362,25 +362,21 @@ void CUDAMiner::search(
             volatile Search_results& buffer(*m_search_buf[current_index]);
             uint32_t found_count = std::min((unsigned)buffer.count, MAX_SEARCH_RESULTS);
 
+            uint32_t gids[MAX_SEARCH_RESULTS];
+            h256 mixes[MAX_SEARCH_RESULTS];
+
             if (found_count)
             {
                 buffer.count = 0;
-                uint64_t nonce_base = start_nonce - m_streams_batch_size;
 
                 // Extract solution and pass to higer level
                 // using io_service as dispatcher
 
                 for (uint32_t i = 0; i < found_count; i++)
                 {
-                    h256 mix;
-                    uint64_t nonce = nonce_base + buffer.result[i].gid;
-                    memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
-                    auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
-
-                    cudalog << EthWhite << "Job: " << w.header.abridged() << " Sol: "
-                            << toHex(sol.nonce, HexPrefix::Add) << EthReset;
-
-                    Farm::f().submitProof(sol);
+                    gids[i] = buffer.result[i].gid;
+                    memcpy(mixes[i].data(), (void*)&buffer.result[i].mix,
+                        sizeof(buffer.result[i].mix));
                 }
             }
 
@@ -388,7 +384,21 @@ void CUDAMiner::search(
             // unless we are done for this round.
             if (!done)
                 run_ethash_search(
-                    m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce, m_settings.parallelHash);
+                    m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce);
+
+            if (found_count)
+            {
+                uint64_t nonce_base = start_nonce - m_streams_batch_size;
+                for (uint32_t i = 0; i < found_count; i++)
+                {
+                    uint64_t nonce = nonce_base + gids[i];
+
+                    Farm::f().submitProof(
+                        Solution{nonce, mixes[i], w, std::chrono::steady_clock::now(), m_index});
+                    cudalog << EthWhite << "Job: " << w.header.abridged() << " Sol: 0x"
+                            << toHex(nonce) << EthReset;
+                }
+            }
         }
 
         // Update the hash rate
