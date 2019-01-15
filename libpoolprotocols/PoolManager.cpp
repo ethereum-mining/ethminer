@@ -444,7 +444,7 @@ void PoolManager::rotateConnect()
         cnote << "Selected pool " << m_selectedHost;
  
         
-        if (m_connectionAttempt > 1) 
+        if ((m_connectionAttempt > 1) && (m_Settings.delayBeforeRetry > 0))
         {
             // sleep before retry 
             cnote << "Connect attempt " << m_connectionAttempt << ", sleep "<< m_Settings.delayBeforeRetry << "s before re-connect";
