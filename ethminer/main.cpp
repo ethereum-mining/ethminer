@@ -988,6 +988,8 @@ public:
                  << "    --farm-retries      INT[1 .. 99999] Default = 3" << endl
                  << "                        Set number of reconnection retries to same pool"
                  << endl
+                 << "    --retry-delay       INT[1 .. 999] Default = 0" << endl
+                 << "                        Delay in seconds before reconnection retry" << endl
                  << "    --failover-timeout  INT[0 .. ] Default not set" << endl
                  << "                        Sets the number of minutes ethminer can stay" << endl
                  << "                        connected to a fail-over pool before trying to" << endl

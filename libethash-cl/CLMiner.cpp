@@ -663,9 +663,9 @@ bool CLMiner::initDevice()
         s << " " << m_deviceDescriptor.clDeviceVersion;
 
     s << " Memory : " << dev::getFormattedMemory((double)m_deviceDescriptor.totalMemory);
+    s << " (" << m_deviceDescriptor.totalMemory << " B)";
     cllog << s.str();
 
-    cllog << "Memory in bytes : " << m_deviceDescriptor.totalMemory;
     if ((m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Amd) &&
         (m_deviceDescriptor.clMaxComputeUnits != 36))
     {

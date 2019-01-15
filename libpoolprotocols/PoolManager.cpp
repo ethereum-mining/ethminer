@@ -157,7 +157,7 @@ void PoolManager::setClientHandlers()
 
         // Should not happen !
         if (!wp)
-            return; 
+            return;
 
         int _currentEpoch = m_currentWp.epoch;
         bool newEpoch = (_currentEpoch == -1);
@@ -418,9 +418,7 @@ void PoolManager::rotateConnect()
     if (!m_Settings.connections.empty() && m_Settings.connections.at(m_activeConnectionIdx)->Host() != "exit")
     {
         if (p_client)
-        {
             p_client = nullptr;
-        }           
 
         if (m_Settings.connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::GETWORK)
             p_client =
@@ -446,8 +444,7 @@ void PoolManager::rotateConnect()
         
         if ((m_connectionAttempt > 1) && (m_Settings.delayBeforeRetry > 0))
         {
-            // sleep before retry 
-            cnote << "Connect attempt " << m_connectionAttempt << ", sleep "<< m_Settings.delayBeforeRetry << "s before re-connect";
+            cnote << "Next connection attempt in " << m_Settings.delayBeforeRetry << " seconds";
             m_reconnecttimer.expires_from_now(boost::posix_time::seconds(m_Settings.delayBeforeRetry));
             m_reconnecttimer.async_wait(m_io_strand.wrap(boost::bind(
                 &PoolManager::reconnecttimer_elapsed, this, boost::asio::placeholders::error)));
@@ -526,14 +523,14 @@ void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
 
 void PoolManager::reconnecttimer_elapsed(const boost::system::error_code& ec)
 {
-    if (!ec)
+    if (ec)
+        return;
+
+    if (m_running.load(std::memory_order_relaxed))
     {
-        if (m_running.load(std::memory_order_relaxed))
+        if (p_client && !p_client->isConnected())
         {
-            if (p_client && !p_client->isConnected())
-            {
-                p_client->connect();
-            }
+            p_client->connect();
         }
     }
 }
