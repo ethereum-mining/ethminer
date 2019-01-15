@@ -894,8 +894,19 @@ bool CLMiner::compileKernel(
     if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
         addDefinition(code, "LEGACY", 1);
 
+#ifdef DEV_BUILD
+    ofstream write;
+#if defined(_WIN32)
+    write.open("/temp/kernel.cl");
+#else
+    write.open("/tmp/kernel.cl");
+#endif
+    write << code;
+    write.close();
+#endif
+
     // create miner OpenCL program
-    cl::Program::Sources sources{{code.data(), code.size()}};
+    cl::Program::Sources sources{code.data()};
     m_program = cl::Program(m_context, sources);
     try
     {
