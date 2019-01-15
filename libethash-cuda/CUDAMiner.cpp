@@ -459,6 +459,9 @@ void CUDAMiner::search(
     // process stream batches until we get new work.
     bool done = false;
 
+    uint32_t gids[MAX_SEARCH_RESULTS];
+    h256 mixHashes[MAX_SEARCH_RESULTS];
+
 
     while (!done)
     {
@@ -495,22 +498,15 @@ void CUDAMiner::search(
             if (found_count)
             {
                 buffer.count = 0;
-                uint64_t nonce_base = start_nonce - m_streams_batch_size;
 
                 // Extract solution and pass to higer level
                 // using io_service as dispatcher
 
                 for (uint32_t i = 0; i < found_count; i++)
                 {
-                    h256 mix;
-                    uint64_t nonce = nonce_base + buffer.result[i].gid;
-                    memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
-
-                    Farm::f().submitProof(
-                        Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index});
-
-                    cudalog << EthWhite << "Job: " << w.header.abridged() << " Sol: 0x"
-                            << toHex(nonce) << EthReset;
+                    gids[i] = buffer.result[i].gid;
+                    memcpy(mixHashes[i].data(), (void*)&buffer.result[i].mix,
+                        sizeof(buffer.result[i].mix));
                 }
             }
 
@@ -527,6 +523,19 @@ void CUDAMiner::search(
                     0,                  // shared mem
                     stream,             // stream
                     args, 0));          // arguments
+            }
+            if (found_count)
+            {
+                uint64_t nonce_base = start_nonce - m_streams_batch_size;
+                for (uint32_t i = 0; i < found_count; i++)
+                {
+                    uint64_t nonce = nonce_base + gids[i];
+                    Farm::f().submitProof(Solution{
+                        nonce, mixHashes[i], w, std::chrono::steady_clock::now(), m_index});
+
+                    cudalog << EthWhite << "Job: " << w.header.abridged() << " Sol: 0x"
+                            << toHex(nonce) << EthReset;
+                }
             }
         }
 
