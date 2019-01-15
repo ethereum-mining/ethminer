@@ -348,7 +348,11 @@ void CUDAMiner::compileKernel(
     text += std::string(CUDAMiner_kernel);
 
     ofstream write;
+#if defined(_WIN32)
+    write.open("/temp/kernel.cu");
+#else
     write.open("/tmp/kernel.cu");
+#endif
     write << text;
     write.close();
 
