@@ -11,24 +11,25 @@ os: "Visual Studio 2017"
 environment:
   matrix:
     - CUDA_VER: "8.0"
-    - CUDA_VER: "9.1"
+    - CUDA_VER: "9.2"
     - CUDA_VER: "10.0"
   HUNTER_CACHE_TOKEN:
     secure: VnpF1MH5MEFvUI5MiMMMFlmbDdst+bfom5ZFVgalYPp/SYDhbejjXJm9Dla/IgpC
 
 cache:
   - C:\CUDA\v8.0 -> appveyor.yml
-  - C:\CUDA\v9.1 -> appveyor.yml
+  - C:\CUDA\v9.2 -> appveyor.yml
   - C:\CUDA\v10.0 -> appveyor.yml
 
 # Download CUDA Windows installer (local) and extract /compiler/* to /CUDA/vX.0/ zip archive.
 install: |
   git submodule update --init --recursive
   if "%CUDA_VER%" == "8.0" set CUDA_ARCHIVE=cuda_8.0.61_windows-exe
-  if "%CUDA_VER%" == "9.1" set CUDA_ARCHIVE=cuda_9.1.85_windows
+  if "%CUDA_VER%" == "9.2" set CUDA_ARCHIVE=cuda_9.2.148_win10
   if "%CUDA_VER%" == "10.0" set CUDA_ARCHIVE=cuda_10.0.130_411.31_windows
-  if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" NEQ "8.0" curl -L https://developer.nvidia.com/compute/cuda/%CUDA_VER%/Prod/local_installers/%CUDA_ARCHIVE% -o %CUDA_ARCHIVE%.exe)
   if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" == "8.0" curl -L https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_windows-exe -o %CUDA_ARCHIVE%.exe)
+  if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" == "9.2" curl -L https://developer.nvidia.com/compute/cuda/%CUDA_VER%/Prod2/local_installers2/%CUDA_ARCHIVE% -o %CUDA_ARCHIVE%.exe)
+  if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" == "10.0" curl -L https://developer.nvidia.com/compute/cuda/%CUDA_VER%/Prod/local_installers/%CUDA_ARCHIVE% -o %CUDA_ARCHIVE%.exe)
   if NOT EXIST C:\CUDA mkdir C:\CUDA
   if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" NEQ "8.0" 7z x %CUDA_ARCHIVE%.exe -oC:\CUDA nvcc/* nvrtc*/*)
   if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" == "8.0" 7z x %CUDA_ARCHIVE%.exe -oC:\CUDA compiler/* nvrtc*/*)

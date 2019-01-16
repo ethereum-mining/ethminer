@@ -10,7 +10,7 @@
 
 set -e
 
-CUDA_VER=9.1.85-1
+CUDA_VER=9.2.148-1
 if [ "$1" != "" ]; then
   CUDA_VER=$1
 fi
@@ -18,7 +18,7 @@ if [ "$CUDA_VER" = "8" ]; then
   CUDA_VER=8.0.61-1
   CUDA_PACKAGE=cuda-core
 elif [ "$CUDA_VER" = "9" ]; then
-  CUDA_VER=9.1.85-1
+  CUDA_VER=9.2.148-1
 elif [ "$CUDA_VER" = "9.1" ]; then
   CUDA_VER=9.1.85-1
 elif [ "$CUDA_VER" = "9.2" ]; then

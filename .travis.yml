@@ -18,6 +18,12 @@ matrix:
           sudo: required
           env:
               - CUDA=ON
+              - CUDA_VERSION=10
+        - os: linux
+          dist: trusty
+          sudo: required
+          env:
+              - CUDA=ON
               - CUDA_VERSION=9
         - os: linux
           dist: trusty
