@@ -98,7 +98,7 @@ struct CUSettings : public MinerSettings
 {
     unsigned streams = 2;
     unsigned schedule = 4;
-    unsigned gridSize = 256;
+    unsigned gridSize = 2048;
     unsigned blockSize = 512;
     unsigned parallelHash = 4;
 };
@@ -108,7 +108,7 @@ struct CLSettings : public MinerSettings
 {
     bool noBinary = false;
     unsigned globalWorkSize = 0;
-    unsigned globalWorkSizeMultiplier = 2048;
+    unsigned globalWorkSizeMultiplier = 32768;
     unsigned localWorkSize = 256;
 };
 
