@@ -179,19 +179,25 @@ wrap_nvml_handle* wrap_nvml_create()
 #if ETH_ETHASHCL
     // Get and count OpenCL devices.
     std::vector<cl::Platform> platforms;
-    cl::Platform::get(&platforms);
     std::vector<cl::Device> platdevs;
-    for (unsigned p = 0; p < platforms.size(); p++)
+    try
     {
-        std::string platformName = platforms[p].getInfo<CL_PLATFORM_NAME>();
-        if (platformName == "NVIDIA CUDA")
+        cl::Platform::get(&platforms);
+        for (unsigned p = 0; p < platforms.size(); p++)
         {
-            platforms[p].getDevices(CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR, &platdevs);
-            nvmlh->opencl_gpucount = platdevs.size();
-            break;
+            std::string platformName = platforms[p].getInfo<CL_PLATFORM_NAME>();
+            if (platformName == "NVIDIA CUDA")
+            {
+                platforms[p].getDevices(CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR, &platdevs);
+                nvmlh->opencl_gpucount = platdevs.size();
+                break;
+            }
         }
     }
-
+    catch (cl::Error)
+    {
+    }
+    
     nvmlh->opencl_nvml_device_id = (int*)calloc(nvmlh->opencl_gpucount, sizeof(int));
 
     // Map NVML to opencl devices
