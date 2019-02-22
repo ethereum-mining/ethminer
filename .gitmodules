@@ -5,3 +5,6 @@
 	path = cmake/cable
 	url = https://github.com/ethereum/cable
 	branch = master
+[submodule "common-lib-amd-APPSDK-3.0"]
+	path = common-lib-amd-APPSDK-3.0
+	url = https://github.com/GPUOpen-Tools/common-lib-amd-APPSDK-3.0.git
