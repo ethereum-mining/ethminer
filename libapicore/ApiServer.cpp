@@ -459,6 +459,8 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
 
     else if (_method == "miner_shuffle")
     {
+        if (!checkApiWriteAccess(m_readonly, jResponse))
+             return;
         // Gives nonce scrambler a new range
         jResponse["result"] = true;
         Farm::f().shuffle();
