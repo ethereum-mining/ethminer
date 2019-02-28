@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.17.1 - unreleased
+
+- Fixed [[#1843](https://github.com/ethereum-mining/ethminer/pull/1843)]:
+  Issue with using latest Nvidia drivers on Windows resolved.
+
 ## 0.16.1rc0
 
 ### Fixed
