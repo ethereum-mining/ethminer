@@ -46,7 +46,6 @@ DEV_INLINE uint32_t fnv_reduce(uint4 v)
 	//return fnv(fnv(fnv(v.x, v.y), v.z), v.w)
 	uint32_t result;
     asm("{\n\t"
-    	".reg .u32 tmp;\n\t"
         "mul.lo.u32 %0, %1, 0x01000193;\n\t"
         "xor.b32 %0, %0, %2;\n\t"
         "mul.lo.u32 %0, %0, 0x01000193;\n\t"
