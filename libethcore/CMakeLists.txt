@@ -1,12 +1,16 @@
-set(SOURCES
-	EthashAux.h EthashAux.cpp
-	Farm.cpp Farm.h
-	Miner.h Miner.cpp
+file(GLOB HEADERS "*.h")
+file(GLOB SOURCES "*.cpp")
+
+add_library(ethcore ${SOURCES} ${HEADERS})
+
+find_package(Boost COMPONENTS system thread REQUIRED)
+
+target_link_libraries(ethcore
+  PUBLIC
+  ${Boost_SYSTEM_LIBRARY}
+	${Boost_THREAD_LIBRARY}
 )
 
-include_directories(BEFORE ..)
-
-add_library(ethcore ${SOURCES})
 target_link_libraries(ethcore PUBLIC devcore ethash::ethash PRIVATE hwmon)
 
 if(ETHASHCL)
