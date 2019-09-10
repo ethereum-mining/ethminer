@@ -45,6 +45,7 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 /* Sanity check for defined OS */
 #if defined(__APPLE__) || defined(__MACOSX)
 /* MACOSX */
+#include <mach/mach.h>
 #elif defined(__linux__)
 /* linux */
 #elif defined(_WIN32)
@@ -67,7 +68,25 @@ using namespace eth;
 static size_t getTotalPhysAvailableMemory()
 {
 #if defined(__APPLE__) || defined(__MACOSX)
-#error "TODO: Function CPUMiner getTotalPhysAvailableMemory() on MAXOSX not implemented"
+    vm_statistics64_data_t	vm_stat;
+    vm_size_t page_size;
+    host_name_port_t host = mach_host_self();
+    kern_return_t rv = host_page_size(host, &page_size);
+    if( rv != KERN_SUCCESS) {
+        cwarn << "Error in func " << __FUNCTION__ << " at host_page_size(...) \""
+              << "\"\n";
+        mach_error("host_page_size(...) error :", rv);
+        return 0;
+    }
+    mach_msg_type_number_t count = HOST_VM_INFO_COUNT;
+    rv = host_statistics (host, HOST_VM_INFO, (host_info_t)&vm_stat, &count);
+    if (rv != KERN_SUCCESS) {
+        cwarn << "Error in func " << __FUNCTION__ << " at host_statistics(...) \""
+              << "\"\n";
+        mach_error("host_statistics(...) error :", rv);
+        return 0;
+    }
+    return vm_stat.free_count*page_size;
 #elif defined(__linux__)
     long pages = sysconf(_SC_AVPHYS_PAGES);
     if (pages == -1L)
@@ -115,7 +134,15 @@ unsigned CPUMiner::getNumDevices()
     }
     return cpus;
 #elif defined(__APPLE__) || defined(__MACOSX)
-#error "TODO: Function CPUMiner::getNumDevices() on MAXOSX not implemented"
+    unsigned int cpus_available = std::thread::hardware_concurrency();
+    if (cpus_available <= 0)
+    {
+        cwarn << "Error in func " << __FUNCTION__ << " at std::thread::hardware_concurrency \""
+              << cpus_available << " were found." << "\"\n";
+        return 0;
+    }
+    return cpus_available;
+
 #elif defined(__linux__)
     long cpus_available;
     cpus_available = sysconf(_SC_NPROCESSORS_ONLN);
@@ -171,7 +198,7 @@ bool CPUMiner::initDevice()
            << " Memory : " << dev::getFormattedMemory((double)m_deviceDescriptor.totalMemory);
 
 #if defined(__APPLE__) || defined(__MACOSX)
-#error "TODO: Function CPUMiner::initDevice() on MAXOSX not implemented"
+/* Not supported on MAC OSX. See https://developer.apple.com/library/archive/releasenotes/Performance/RN-AffinityAPI/ */
 #elif defined(__linux__)
     cpu_set_t cpuset;
     int err;
