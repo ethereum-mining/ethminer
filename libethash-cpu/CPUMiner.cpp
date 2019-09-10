@@ -81,9 +81,9 @@ static size_t getTotalPhysAvailableMemory()
     mach_msg_type_number_t count = HOST_VM_INFO_COUNT;
     rv = host_statistics (host, HOST_VM_INFO, (host_info_t)&vm_stat, &count);
     if (rv != KERN_SUCCESS) {
-        cwarn << "Error in func " << __FUNCTION__ << " at host_info(...) \""
+        cwarn << "Error in func " << __FUNCTION__ << " at host_statistics(...) \""
               << "\"\n";
-        mach_error("host_info(...) error :", rv);
+        mach_error("host_statistics(...) error :", rv);
         return 0;
     }
     return vm_stat.free_count*page_size;
