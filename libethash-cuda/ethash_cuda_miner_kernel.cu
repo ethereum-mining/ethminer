@@ -14,6 +14,8 @@
 
 #include "keccak.cuh"
 
+#include "sha512.cuh"
+
 #include "dagger_shuffled.cuh"
 
 __global__ void ethash_search(volatile Search_results* g_output, uint64_t start_nonce)
@@ -46,7 +48,6 @@ void run_ethash_search(uint32_t gridSize, uint32_t blockSize, cudaStream_t strea
 #define ETHASH_DATASET_PARENTS 256
 #define NODE_WORDS (64 / 4)
 
-
 __global__ void ethash_calculate_dag_item(uint32_t start)
 {
     uint32_t const node_index = start + blockIdx.x * blockDim.x + threadIdx.x;
@@ -70,7 +71,8 @@ __global__ void ethash_calculate_dag_item(uint32_t start)
             uint4 p4 = d_light[shuffle_index].uint4s[thread_id];
             for (int w = 0; w < 4; w++)
             {
-                uint4 s4 = make_uint4(SHFL(p4.x, w, 4), SHFL(p4.y, w, 4), SHFL(p4.z, w, 4), SHFL(p4.w, w, 4));
+                uint4 s4 = make_uint4(
+                    SHFL(p4.x, w, 4), SHFL(p4.y, w, 4), SHFL(p4.z, w, 4), SHFL(p4.w, w, 4));
                 if (t == thread_id)
                 {
                     dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], s4);
@@ -88,7 +90,7 @@ __global__ void ethash_calculate_dag_item(uint32_t start)
         for (uint32_t w = 0; w < 4; w++)
         {
             s[w] = make_uint4(SHFL(dag_node.uint4s[w].x, t, 4), SHFL(dag_node.uint4s[w].y, t, 4),
-                              SHFL(dag_node.uint4s[w].z, t, 4), SHFL(dag_node.uint4s[w].w, t, 4));
+                SHFL(dag_node.uint4s[w].z, t, 4), SHFL(dag_node.uint4s[w].w, t, 4));
         }
         if (shuffle_index < d_dag_size * 2)
         {
@@ -103,17 +105,26 @@ void ethash_generate_dag(
     const uint32_t work = (uint32_t)(dag_size / sizeof(hash64_t));
     const uint32_t run = gridSize * blockSize;
 
+	unsigned threshold_bits = 32;
+    const uint64_t threshold = (-1ULL) >> threshold_bits;
+
+	char* prefix = "";
+    const unsigned prefix_size = strlen(prefix);
+    char* prefix_dev;
+    CUDA_SAFE_CALL(cudaMalloc(&prefix_dev, prefix_size + 1));
+    CUDA_SAFE_CALL(cudaMemcpy(prefix_dev, prefix, prefix_size + 1, cudaMemcpyHostToDevice));
+
     uint32_t base;
     for (base = 0; base <= work - run; base += run)
     {
-        ethash_calculate_dag_item<<<gridSize, blockSize, 0, stream>>>(base);
+        wq_sha512<<<gridSize, blockSize, 0, stream>>>(prefix, base, threshold);
         CUDA_SAFE_CALL(cudaDeviceSynchronize());
     }
     if (base < work)
     {
         uint32_t lastGrid = work - base;
         lastGrid = (lastGrid + blockSize - 1) / blockSize;
-        ethash_calculate_dag_item<<<lastGrid, blockSize, 0, stream>>>(base);
+        wq_sha512<<<lastGrid, blockSize, 0, stream>>>(prefix, base, threshold);
         CUDA_SAFE_CALL(cudaDeviceSynchronize());
     }
     CUDA_SAFE_CALL(cudaGetLastError());
