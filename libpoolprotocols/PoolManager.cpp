@@ -329,14 +329,12 @@ void PoolManager::setActiveConnection(unsigned int idx)
 
 void PoolManager::setActiveConnection(std::string& _connstring)
 {
-    bool found = false;
     for (size_t idx = 0; idx < m_Settings.connections.size(); idx++)
         if (boost::iequals(m_Settings.connections[idx]->str(), _connstring))
         {
             setActiveConnectionCommon(idx);
             return;
         }
-    if (!found)
         throw std::runtime_error("Not found.");
 }
 
