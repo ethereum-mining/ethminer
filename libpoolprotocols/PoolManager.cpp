@@ -335,7 +335,7 @@ void PoolManager::setActiveConnection(std::string& _connstring)
             setActiveConnectionCommon(idx);
             return;
         }
-        throw std::runtime_error("Not found.");
+    throw std::runtime_error("Not found.");
 }
 
 std::shared_ptr<URI> PoolManager::getActiveConnection()
