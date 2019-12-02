@@ -62,6 +62,10 @@ The above samples produce the very same result.
 ```
 -P stratum://\`account.1234\`.Worker:password@eu1.ethermine.org:4444
 ```  
+**`%` on Windows**. The percent symbol `%` has a special meaning in Windows batch files thus you may need to further escape it by doubling. Following example shows `%2e` needs to be replaced as `%%2e`
+```
+-P stratum://account%%2e1234.Worker:password@eu1.ethermine.org:4444
+```  
 
 ## Secure socket comunications for stratum only
 

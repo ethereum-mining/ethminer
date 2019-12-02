@@ -405,14 +405,11 @@ void CLMiner::workLoop()
                         m_lastNonce = nonce;
                         h256 mix;
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-                        auto sol = Solution{
-                            nonce, mix, current, std::chrono::steady_clock::now(), m_index};
 
-                        cllog << EthWhite << "Job: " << w.header.abridged() << " Sol: "
-                              << toHex(sol.nonce, HexPrefix::Add) << EthReset;
-
-                        Farm::f().submitProof(sol);
-
+                        Farm::f().submitProof(Solution{
+                            nonce, mix, current, std::chrono::steady_clock::now(), m_index});
+                        cllog << EthWhite << "Job: " << current.header.abridged() << " Sol: 0x"
+                              << toHex(nonce) << EthReset;
                     }
                 }
             }
@@ -466,7 +463,7 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
         ClPlatformTypeEnum platformType = ClPlatformTypeEnum::Unknown;
         if (platformName == "AMD Accelerated Parallel Processing")
             platformType = ClPlatformTypeEnum::Amd;
-        else if (platformName == "Clover")
+        else if (platformName == "Clover" || platformName == "Intel Gen OCL Driver")
             platformType = ClPlatformTypeEnum::Clover;
         else if (platformName == "NVIDIA CUDA")
             platformType = ClPlatformTypeEnum::Nvidia;

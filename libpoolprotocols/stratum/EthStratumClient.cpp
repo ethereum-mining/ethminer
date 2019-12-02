@@ -715,7 +715,7 @@ void EthStratumClient::processExtranonce(std::string& enonce)
     m_session->extraNonceSizeBytes = enonce.length();
     cnote << "Extranonce set to " EthWhite << enonce << EthReset;
     enonce.resize(16, '0');
-    m_session->extraNonce = std::stoul(enonce, nullptr, 16);
+    m_session->extraNonce = std::stoull(enonce, nullptr, 16);
 }
 
 void EthStratumClient::processResponse(Json::Value& responseObject)

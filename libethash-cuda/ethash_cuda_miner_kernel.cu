@@ -16,12 +16,11 @@
 
 #include "dagger_shuffled.cuh"
 
-template <uint32_t _PARALLEL_HASH>
 __global__ void ethash_search(volatile Search_results* g_output, uint64_t start_nonce)
 {
     uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
     uint2 mix[4];
-    if (compute_hash<_PARALLEL_HASH>(start_nonce + gid, mix))
+    if (compute_hash(start_nonce + gid, mix))
         return;
     uint32_t index = atomicInc((uint32_t*)&g_output->count, 0xffffffff);
     if (index >= MAX_SEARCH_RESULTS)
@@ -38,26 +37,9 @@ __global__ void ethash_search(volatile Search_results* g_output, uint64_t start_
 }
 
 void run_ethash_search(uint32_t gridSize, uint32_t blockSize, cudaStream_t stream,
-    volatile Search_results* g_output, uint64_t start_nonce, uint32_t parallelHash)
+    volatile Search_results* g_output, uint64_t start_nonce)
 {
-    switch (parallelHash)
-    {
-    case 1:
-        ethash_search<1><<<gridSize, blockSize, 0, stream>>>(g_output, start_nonce);
-        break;
-    case 2:
-        ethash_search<2><<<gridSize, blockSize, 0, stream>>>(g_output, start_nonce);
-        break;
-    case 4:
-        ethash_search<4><<<gridSize, blockSize, 0, stream>>>(g_output, start_nonce);
-        break;
-    case 8:
-        ethash_search<8><<<gridSize, blockSize, 0, stream>>>(g_output, start_nonce);
-        break;
-    default:
-        ethash_search<4><<<gridSize, blockSize, 0, stream>>>(g_output, start_nonce);
-        break;
-    }
+    ethash_search<<<gridSize, blockSize, 0, stream>>>(g_output, start_nonce);
     CUDA_SAFE_CALL(cudaGetLastError());
 }
 

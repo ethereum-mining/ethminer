@@ -16,7 +16,7 @@ endif()
 hunter_add_package(CLI11)
 find_package(CLI11 CONFIG REQUIRED)
 
-target_link_libraries(ethminer PRIVATE ethcore poolprotocols devcore ethminer-buildinfo CLI11::CLI11 Boost::system)
+target_link_libraries(ethminer PRIVATE ethcore poolprotocols devcore ethminer-buildinfo CLI11::CLI11 Boost::system Boost::thread)
 
 if(ETHDBUS)
 	find_package(PkgConfig)
