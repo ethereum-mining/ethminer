@@ -93,7 +93,7 @@ Ordered alphabetically. [Contributors statistics since 2015-08-20].
 | Genoil                | [@Genoil](https://github.com/Genoil)                         |     |
 | goobur                | [@goobur](https://github.com/goobur)                         |     |
 | Marius van der Wijden | [@MariusVanDerWijden](https://github.com/MariusVanDerWijden) | ETH: 0x57d22b967c9dc64e5577f37edf1514c2d8985099 |
-| Paweł Bylica          | [@chfast](https://github.com/chfast)                         | ETH: 0x8FB24C5b5a75887b429d886DBb57fd053D4CF3a2 |
+| Paweł Bylica          | [@chfast](https://github.com/chfast)                         |     |
 | Philipp Andreas       | [@smurfy](https://github.com/smurfy)                         |     |
 | Stefan Oberhumer      | [@StefanOberhumer](https://github.com/StefanOberhumer)       |     |
 
