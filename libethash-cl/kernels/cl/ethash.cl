@@ -73,9 +73,7 @@ static __constant uint2 const Keccak_f1600_RC[24] = {
 
 #ifdef cl_amd_media_ops
 
-#ifdef LEGACY
 #define barrier(x) mem_fence(x)
-#endif
 
 #define ROTL64_1(x, y) amd_bitalign((x), (x).s10, 32 - (y))
 #define ROTL64_2(x, y) amd_bitalign((x).s10, (x), 32 - (y))
