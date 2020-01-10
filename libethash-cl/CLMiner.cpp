@@ -692,8 +692,10 @@ bool CLMiner::initEpoch_internal()
               << dev::getFormattedMemory((double)m_deviceDescriptor.totalMemory)
               << " available on device.";
         pause(MinerPauseEnum::PauseDueToInsufficientMemory);
-        return true;  // This will prevent to exit the thread and
-                      // Eventually resume mining when changing coin or epoch (NiceHash)
+        return (m_context.size() != 0) ;
+	// This will prevent to exit the thread and
+	// Eventually resume mining when changing coin or epoch (NiceHash)
+	// if context exists.  Otherwise it's hopeless and exit thread
     }
 
     cllog << "Generating DAG + Light : " << dev::getFormattedMemory((double)RequiredMemory);
