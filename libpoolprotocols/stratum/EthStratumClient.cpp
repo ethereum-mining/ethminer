@@ -372,6 +372,10 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
         return;
     }
 
+    if (!m_conn) {
+      return;
+    }
+
     // No msg from client (EthereumStratum/2.0.0)
     if (m_conn->StratumMode() == 3 && m_session)
     {
