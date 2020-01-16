@@ -119,10 +119,10 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create()
 
                 try
                 {
-                    PciDomain = std::stoi(pciIdParts.at(0), nullptr, 10);
-                    PciBus = std::stoi(pciIdParts.at(1), nullptr, 10);
-                    PciDevice = std::stoi(pciIdParts.at(2), nullptr, 10);
-                    PciFunction = std::stoi(pciIdParts.at(3), nullptr, 10);
+                    PciDomain = std::stoi(pciIdParts.at(0), nullptr, 16);
+                    PciBus = std::stoi(pciIdParts.at(1), nullptr, 16);
+                    PciDevice = std::stoi(pciIdParts.at(2), nullptr, 16);
+                    PciFunction = std::stoi(pciIdParts.at(3), nullptr, 16);
                 }
                 catch (const std::exception&)
                 {
