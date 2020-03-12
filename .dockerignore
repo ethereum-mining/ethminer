@@ -1,0 +1,3 @@
+# ignore some Git dirs
+.git
+.github
