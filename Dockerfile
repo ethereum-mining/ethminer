@@ -11,7 +11,6 @@ RUN apt-get update \
 # Add source files
 ADD . /ethminer
 WORKDIR /ethminer
-RUN git submodule update --init --recursive
 
 # Build. Use all cores.
 RUN mkdir build; \
