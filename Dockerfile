@@ -8,7 +8,9 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y git cmake build-essential
 
-# Update submodules
+# Add source files
+ADD . /ethminer
+WORKDIR /ethminer
 RUN git submodule update --init --recursive
 
 # Build. Use all cores.
