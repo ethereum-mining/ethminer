@@ -233,7 +233,11 @@ do { \
     s = select(mix.s6, s, (x) != 6); \
     s = select(mix.s7, s, (x) != 7); \
     buffer[get_local_id(0)] = fnv(init0 ^ (a + x), s) % dag_size; \
-    mix = fnv(mix, g_dag[buffer[lane_idx]].uint8s[thread_id]); \
+    if(buffer[hash_id] < dag_size) { \
+        mix = fnv(mix, g_dag[buffer[lane_idx]].uint8s[thread_id]); \
+    } else { \
+        mix = fnv(mix, g_dag2[buffer[lane_idx]].uint8s[thread_id]); \
+    } \
     mem_fence(CLK_LOCAL_MEM_FENCE); \
 } while(0)
 
@@ -256,7 +260,8 @@ __kernel void search(
     __global struct SearchResults* restrict g_output,
     __constant uint2 const* g_header,
     __global ulong8 const* _g_dag,
-    uint dag_size,
+    __global ulong8 const* _g_dag2,
+    uint _dag_size,
     ulong start_nonce,
     ulong target
 )
@@ -267,6 +272,8 @@ __kernel void search(
 #endif
 
     __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag;
+    __global hash128_t const* g_dag2 = (__global hash128_t const*) _g_dag2;
+    __global uint const dag_size = _dag_size/2;
 
     const uint thread_id = get_local_id(0) % 4;
     const uint hash_id = get_local_id(0) / 4;
@@ -429,10 +436,11 @@ static void SHA3_512(uint2 *s)
         s[i] = st[i];
 }
 
-__kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global uint16 *_DAG, uint light_size)
+__kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global uint16 *_DAG, __global uint16 *_DAG2, uint DAG_SIZE, uint light_size)
 {
     __global const Node *Cache = (__global const Node *) _Cache;
     __global Node *DAG = (__global Node *) _DAG;
+    __global Node *DAG2 = (__global Node *) _DAG2;
     uint NodeIdx = start + get_global_id(0);
 
     Node DAGNode = Cache[NodeIdx % light_size];
@@ -453,6 +461,9 @@ __kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global ui
 
     SHA3_512(DAGNode.qwords);
 
-    //if (NodeIdx < DAG_SIZE)
-    DAG[NodeIdx] = DAGNode;
+    if (NodeIdx < DAG_SIZE/2) {
+        DAG[NodeIdx] = DAGNode;
+    } else {
+        DAG2[NodeIdx] = DAGNode;
+    }
 }

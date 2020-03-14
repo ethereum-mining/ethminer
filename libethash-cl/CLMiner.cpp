@@ -837,7 +837,8 @@ bool CLMiner::initEpoch_internal()
                   << dev::getFormattedMemory(
                          (double)(m_deviceDescriptor.totalMemory - RequiredMemory));
             m_dag.clear();
-            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize));
+            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize / 2));
+            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize / 2));
             cllog << "Loading kernels";
 
             // If we have a binary kernel to use, let's try it
@@ -864,9 +865,13 @@ bool CLMiner::initEpoch_internal()
         m_header.clear();
         m_header.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
 
-        m_searchKernel.setArg(1, m_header[0]);
-        m_searchKernel.setArg(2, m_dag[0]);
-        m_searchKernel.setArg(3, m_dagItems);
+        if (!loadedBinary) 
+        {
+            m_searchKernel.setArg(1, m_header[0]);
+            m_searchKernel.setArg(2, m_dag[0]);
+            m_searchKernel.setArg(3, m_dag[1]);
+            m_searchKernel.setArg(4, m_dagItems);
+        }
 
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
@@ -875,7 +880,9 @@ bool CLMiner::initEpoch_internal()
 
         m_dagKernel.setArg(1, m_light[0]);
         m_dagKernel.setArg(2, m_dag[0]);
-        m_dagKernel.setArg(3, (uint32_t)(m_epochContext.lightSize / 64));
+        m_dagKernel.setArg(3, m_dag[1]);
+        m_searchKernel.setArg(4, m_dagItems);
+        m_dagKernel.setArg(5, (uint32_t)(m_epochContext.lightSize / 64));
 
         const uint32_t workItems = m_dagItems * 2;  // GPU computes partial 512-bit DAG items.
 
