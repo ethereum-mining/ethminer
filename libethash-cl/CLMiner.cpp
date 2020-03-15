@@ -373,7 +373,7 @@ void CLMiner::workLoop()
                 m_searchKernel.setArg(1, m_header[0]);        // Supply header buffer to kernel.
                 m_searchKernel.setArg(2, m_dag[0]);           // Supply DAG buffer to kernel.
                 m_searchKernel.setArg(3, m_dag[1]);           // Supply DAG buffer to kernel.
-                m_searchKernel.setArg(4, m_dagItems/2);
+                m_searchKernel.setArg(4, m_dagItems);
                 m_searchKernel.setArg(6, target);
 
 #ifdef DEV_BUILD
@@ -838,7 +838,7 @@ bool CLMiner::initEpoch_internal()
                   << dev::getFormattedMemory(
                          (double)(m_deviceDescriptor.totalMemory - RequiredMemory));
             m_dag.clear();
-            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize / 2));
+            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize / 2 + 1));
             m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize / 2));
             cllog << "Loading kernels";
 
@@ -871,7 +871,7 @@ bool CLMiner::initEpoch_internal()
             m_searchKernel.setArg(1, m_header[0]);
             m_searchKernel.setArg(2, m_dag[0]);
             m_searchKernel.setArg(3, m_dag[1]);
-            m_searchKernel.setArg(4, m_dagItems/2);
+            m_searchKernel.setArg(4, m_dagItems);
         }
 
         // create mining buffers
@@ -882,7 +882,7 @@ bool CLMiner::initEpoch_internal()
         m_dagKernel.setArg(1, m_light[0]);
         m_dagKernel.setArg(2, m_dag[0]);
         m_dagKernel.setArg(3, m_dag[1]);
-        m_dagKernel.setArg(4, m_dagItems/2);
+        m_dagKernel.setArg(4, m_dagItems);
         m_dagKernel.setArg(5, (uint32_t)(m_epochContext.lightSize / 64));
 
         const uint32_t workItems = m_dagItems * 2;  // GPU computes partial 512-bit DAG items.

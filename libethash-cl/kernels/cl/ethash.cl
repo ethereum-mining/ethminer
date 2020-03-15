@@ -233,11 +233,13 @@ do { \
     s = select(mix.s6, s, (x) != 6); \
     s = select(mix.s7, s, (x) != 7); \
     buffer[get_local_id(0)] = fnv(init0 ^ (a + x), s) % dag_size; \
-    if(buffer[lane_idx] < dag_size) { \
-        mix = fnv(mix, g_dag[buffer[lane_idx]].uint8s[thread_id]); \
+    uint8 dagItem; \
+    if(buffer[lane_idx] < dag_size/2) { \
+        dagItem = g_dag[buffer[lane_idx]].uint8s[thread_id]; \
     } else { \
-        mix = fnv(mix, g_dag2[buffer[lane_idx] % dag_size].uint8s[thread_id]); \
+        dagItem = g_dag2[buffer[lane_idx] - dag_size/2].uint8s[thread_id]; \
     } \
+    mix = fnv(mix, dagItem); \
     mem_fence(CLK_LOCAL_MEM_FENCE); \
 } while(0)
 
@@ -461,9 +463,9 @@ __kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global ui
 
     SHA3_512(DAGNode.qwords);
 
-    if (NodeIdx < DAG_SIZE) {
+    if (NodeIdx < DAG_SIZE/2) {
         DAG[NodeIdx] = DAGNode;
-    } else {
-        DAG2[NodeIdx % DAG_SIZE] = DAGNode;
+    } else if (NodeIdx < DAG_SIZE){
+        DAG2[NodeIdx % DAG_SIZE/2] = DAGNode;
     }
 }
