@@ -232,12 +232,12 @@ do { \
     s = select(mix.s5, s, (x) != 5); \
     s = select(mix.s6, s, (x) != 6); \
     s = select(mix.s7, s, (x) != 7); \
-    buffer[get_local_id(0)] = fnv(init0 ^ (a + x), s) % dag_size; \
+    buffer[get_local_id(0)] = fnv(init0 ^ (a + x), s) % (dag_size * 2); \
     uint8 dagItem; \
-    if(buffer[lane_idx] < dag_size/2) { \
+    if(buffer[lane_idx] < dag_size) { \
         dagItem = g_dag[buffer[lane_idx]].uint8s[thread_id]; \
     } else { \
-        dagItem = g_dag2[buffer[lane_idx] - dag_size/2].uint8s[thread_id]; \
+        dagItem = g_dag2[buffer[lane_idx] - dag_size].uint8s[thread_id]; \
     } \
     mix = fnv(mix, dagItem); \
     mem_fence(CLK_LOCAL_MEM_FENCE); \
@@ -463,9 +463,9 @@ __kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global ui
 
     SHA3_512(DAGNode.qwords);
 
-    if (NodeIdx < DAG_SIZE/2) {
+    if (NodeIdx < DAG_SIZE) {
         DAG[NodeIdx] = DAGNode;
-    } else if (NodeIdx < DAG_SIZE){
-        DAG2[NodeIdx - DAG_SIZE/2] = DAGNode;
+    } else if (NodeIdx < DAG_SIZE*2){
+        DAG2[NodeIdx - DAG_SIZE] = DAGNode;
     }
 }
