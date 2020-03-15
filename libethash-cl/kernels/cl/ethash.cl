@@ -466,6 +466,6 @@ __kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global ui
     if (NodeIdx < DAG_SIZE/2) {
         DAG[NodeIdx] = DAGNode;
     } else if (NodeIdx < DAG_SIZE){
-        DAG2[NodeIdx % DAG_SIZE/2] = DAGNode;
+        DAG2[NodeIdx - DAG_SIZE/2] = DAGNode;
     }
 }
