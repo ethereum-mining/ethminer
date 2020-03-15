@@ -236,7 +236,7 @@ do { \
     if(buffer[hash_id] < dag_size) { \
         mix = fnv(mix, g_dag[buffer[lane_idx]].uint8s[thread_id]); \
     } else { \
-        mix = fnv(mix, g_dag2[buffer[lane_idx]].uint8s[thread_id]); \
+        mix = fnv(mix, g_dag2[buffer[lane_idx] - dag_size].uint8s[thread_id]); \
     } \
     mem_fence(CLK_LOCAL_MEM_FENCE); \
 } while(0)
@@ -273,7 +273,7 @@ __kernel void search(
 
     __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag;
     __global hash128_t const* g_dag2 = (__global hash128_t const*) _g_dag2;
-    __global uint const dag_size = _dag_size/2;
+    const uint dag_size = _dag_size;
 
     const uint thread_id = get_local_id(0) % 4;
     const uint hash_id = get_local_id(0) / 4;
@@ -461,9 +461,9 @@ __kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global ui
 
     SHA3_512(DAGNode.qwords);
 
-    if (NodeIdx < DAG_SIZE/2) {
+    if (NodeIdx < DAG_SIZE) {
         DAG[NodeIdx] = DAGNode;
     } else {
-        DAG2[NodeIdx] = DAGNode;
+        DAG2[NodeIdx - DAG_SIZE] = DAGNode;
     }
 }
