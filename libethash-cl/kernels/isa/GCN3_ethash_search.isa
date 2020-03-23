@@ -24,7 +24,8 @@
         .arg _.aqlwrap_pointer, "size_t", long
         .arg output, "uint*", uint*, global, restrict volatile
         .arg header, "uint2*", uint2*, constant, const, rdonly
-        .arg dag, "ulong8*", ulong8*, global, const, rdonly
+        .arg dag0, "ulong8*", ulong8*, global, const, rdonly
+        .arg dag1, "ulong8*", ulong8*, global, const, rdonly
         .arg dag_size, "uint", uint
         .arg start_nonce, "ulong", ulong
         .arg target, "ulong", ulong
@@ -132,15 +133,16 @@
 
         arg_output      = 0x30
         arg_header      = 0x38
-        arg_dag         = 0x40
-        arg_dag_size    = 0x48
-        arg_start_nonce = 0x50
-        arg_target      = 0x58
-        arg_isolate     = 0x60
+        arg_dag0        = 0x40
+        arg_dag1        = 0x48
+        arg_dag_size    = 0x50
+        arg_start_nonce = 0x58
+        arg_target      = 0x60
+        arg_isolate     = 0x68
 
         output          = %s[2:3]
         header          = %s[10:11]
-        dag             = %s[12:13]
+        dag0            = %s[12:13]
         dag_size        = %s9
         start_nonce     = %s[14:15]
         target          = %s[16:17]
@@ -160,6 +162,7 @@
         pass            = %s40
         keccak_round    = %s41
         first_work_item_in_group = %s42
+        dag1            = %s[44:45]
         exec_mask       = %s[46:47]
 
         v_mov_b32       local_id, v0
@@ -182,7 +185,8 @@
 .endif
 
         s_load_dwordx2  header,         args,    arg_header
-        s_load_dwordx2  dag,            args,    arg_dag
+        s_load_dwordx2  dag0,           args,    arg_dag0
+        s_load_dwordx2  dag1,           args,    arg_dag1
         s_load_dword    dag_size,       args,    arg_dag_size
         s_load_dwordx2  start_nonce,    args,    arg_start_nonce
         s_load_dwordx2  target,         args,    arg_target
@@ -674,12 +678,21 @@
         v_cndmask_b32   mix_temp0, mix_temp1, mix_temp0, scalar_double_temp1
 
         ds_bpermute_b32 mix_double_temp0[0], temp0, mix_temp0
-
-        v_mov_b32       mix_double_temp0[1], 0
-        v_mov_b32       mix_double_temp1[0], dag[0]
-        v_mov_b32       mix_double_temp1[1], dag[1]
         s_waitcnt       lgkmcnt(0)
 
+        v_and_b32       mix_double_temp0[1], mix_double_temp0[0], 1
+        v_mov_b32       mix_double_temp1[0], dag1[0]
+        v_mov_b32       mix_double_temp1[1], dag1[1]
+        v_sub_u32       mix_double_temp0[1], vcc, mix_double_temp0[1], 1
+        s_and_saveexec_b64 exec_mask, vcc
+        v_mov_b32       mix_double_temp1[0], dag0[0]
+        v_mov_b32       mix_double_temp1[1], dag0[1]
+        s_mov_b64       exec, exec_mask
+
+        v_mov_b32       mix_double_temp0[1], 0
+        s_waitcnt       lgkmcnt(0)
+
+        v_lshrrev_b64   mix_double_temp0, 1, mix_double_temp0
         v_lshlrev_b64   mix_double_temp0, 7, mix_double_temp0
         v_or_b32        mix_double_temp0[0], mix_double_temp0[0], temp3
 
@@ -800,14 +813,14 @@
 .ifdef FAST_EXIT
         /* increment hash count */
         v_cmp_eq_u32    vcc, 0, local_id
-        s_and_saveexec_b64 s[46:47], vcc
+        s_and_saveexec_b64 exec_mask, vcc
         s_add_u32       scalar_double_temp0[0], output[0], result_count_offset + 4
         s_addc_u32      scalar_double_temp0[1], output[1], 0
         v_mov_b32       temp0, 1
         v_mov_b32       mix_double_temp0[0], scalar_double_temp0[0]
         v_mov_b32       mix_double_temp0[1], scalar_double_temp0[1]
         flat_atomic_add temp0, mix_double_temp0, temp0 glc
-        s_mov_b64       exec, s[46:47]
+        s_mov_b64       exec, exec_mask
 .endif
 
         /* gid - Upper 32bits are ignored. */
@@ -824,7 +837,7 @@
         v_perm_b32      mix_double_temp0[0], mix_double_temp0[0], state1, scalar_temp0
         s_waitcnt       lgkmcnt(0)
         v_cmp_gt_u64    vcc, target, mix_double_temp0
-        s_and_saveexec_b64 s[46:47], vcc
+        s_and_saveexec_b64 exec_mask, vcc
 
         /* got solution, set the abort flag */
         s_waitcnt       lgkmcnt(0)
@@ -866,6 +879,6 @@
         flat_store_dwordx4 mix_double_temp1, mix_save1
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
 
-        s_mov_b64       exec, s[46:47]
+        s_mov_b64       exec, exec_mask
 fastexit:
         s_endpgm
