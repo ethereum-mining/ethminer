@@ -10,44 +10,30 @@
     .driver_version 257000
     .include "GCN_ethash_globaldata.isa"
     .include "GCN3_ethash_search.isa"
-    .ifdef DAGGEN
-        .include "GCN3_ethash_GenerateDAG.isa"
-    .endif
 .elseifgpu tonga
     .driver_version 200406
     .include "GCN_ethash_globaldata.isa"
     .include "GCN3_ethash_search.isa"
-    .ifdef DAGGEN
-        .include "GCN3_ethash_GenerateDAG.isa"
-    .endif
 .elseifgpu baffin
     .driver_version 257000
     .include "GCN_ethash_globaldata.isa"
     .include "GCN3_ethash_search.isa"
-    .ifdef DAGGEN
-        .include "GCN3_ethash_GenerateDAG.isa"
-    .endif
 .elseifgpu gfx804
     .driver_version 257000
     .include "GCN_ethash_globaldata.isa"
     .include "GCN3_ethash_search.isa"
-    .ifdef DAGGEN
-        .include "GCN3_ethash_GenerateDAG.isa"
-    .endif
 .elseifgpu gfx900
     .driver_version 257000
     .include "GCN_ethash_globaldata.isa"
     .include "GCN5_ethash_search.isa"
-    .ifdef DAGGEN
-        .include "GCN5_ethash_GenerateDAG.isa"
-    .endif
 .elseifgpu gfx901
     .driver_version 257000
     .include "GCN_ethash_globaldata.isa"
     .include "GCN5_ethash_search.isa"
-    .ifdef DAGGEN
-        .include "GCN5_ethash_GenerateDAG.isa"
-    .endif
+.elseifgpu gfx906
+    .driver_version 2906007
+    .include "GCN_ethash_globaldata.isa"
+    .include "GCN5_ethash_search.isa"
 .else
     .error "Unsupported GPU!"
 .endif
