@@ -69,9 +69,11 @@ Requirements for building and launching in Docker:
 - Docker 19.x and `nvidia-container-toolkit` installed
 - Nvidia driver supporting CUDA 10.1
 
-Build a local Docker image:
+First clone this repository and then build a local Docker image,
 
 ```sh
+cd ethminer
+git submodule update --init --recursive
 docker build -t myminer .
 ```
 
