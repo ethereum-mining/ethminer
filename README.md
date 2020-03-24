@@ -24,6 +24,7 @@
 * [Install](#install)
 * [Usage](#usage)
     * [Examples connecting to pools](#examples-connecting-to-pools)
+    * [Launch in Docker container](#examples-docker)
 * [Build](#build)
     * [Continuous Integration and development builds](#continuous-integration-and-development-builds)
     * [Building from source](#building-from-source)
@@ -61,6 +62,27 @@ ethminer --help
 ### Examples connecting to pools
 
 Check our [samples](docs/POOL_EXAMPLES_ETH.md) to see how to connect to different pools.
+
+### Launch in Docker container
+
+Requirements for building and launching in Docker:
+- Docker 19.x and `nvidia-container-toolkit` installed
+- Nvidia driver supporting CUDA 10.1
+
+Build a local Docker image:
+
+```sh
+docker build -t myminer .
+```
+
+Launch a Docker container:
+
+```sh
+export ETH_WALLET=mywallet
+export WORKER_NAME=mycomputer
+
+docker run --gpus all -e ETH_WALLET -e WORKER_NAME -P -d myminer
+```
 
 ## Build
 
