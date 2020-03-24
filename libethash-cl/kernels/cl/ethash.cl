@@ -217,6 +217,7 @@ do { \
         buffer[hash_id] = fnv(init0 ^ (a + x), s) % dag_size; \
     } \
     barrier(CLK_LOCAL_MEM_FENCE); \
+    __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag0; \
     mix = fnv(mix, g_dag[buffer[hash_id]].uint8s[thread_id]); \
 } while(0)
 
@@ -233,10 +234,14 @@ do { \
     s = select(mix.s6, s, (x) != 6); \
     s = select(mix.s7, s, (x) != 7); \
     buffer[get_local_id(0)] = fnv(init0 ^ (a + x), s) % dag_size; \
-    mix = fnv(mix, g_dag[buffer[lane_idx]].uint8s[thread_id]); \
+    uint idx = buffer[lane_idx]; \
+    __global hash128_t const* g_dag; \
+    g_dag = (__global hash128_t const*) _g_dag0; \
+    if (idx & 1) \
+        g_dag = (__global hash128_t const*) _g_dag1; \
+    mix = fnv(mix, g_dag[idx >> 1].uint8s[thread_id]); \
     mem_fence(CLK_LOCAL_MEM_FENCE); \
 } while(0)
-
 #endif
 
 // NOTE: This struct must match the one defined in CLMiner.cpp
@@ -255,7 +260,8 @@ __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
 __kernel void search(
     __global struct SearchResults* restrict g_output,
     __constant uint2 const* g_header,
-    __global ulong8 const* _g_dag,
+    __global ulong8 const* _g_dag0,
+    __global ulong8 const* _g_dag1,
     uint dag_size,
     ulong start_nonce,
     ulong target
@@ -265,8 +271,6 @@ __kernel void search(
     if (g_output->abort)
         return;
 #endif
-
-    __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag;
 
     const uint thread_id = get_local_id(0) % 4;
     const uint hash_id = get_local_id(0) / 4;
@@ -429,10 +433,9 @@ static void SHA3_512(uint2 *s)
         s[i] = st[i];
 }
 
-__kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global uint16 *_DAG, uint light_size)
+__kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global uint16 *_DAG0, __global uint16 *_DAG1, uint light_size)
 {
     __global const Node *Cache = (__global const Node *) _Cache;
-    __global Node *DAG = (__global Node *) _DAG;
     uint NodeIdx = start + get_global_id(0);
 
     Node DAGNode = Cache[NodeIdx % light_size];
@@ -453,6 +456,12 @@ __kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global ui
 
     SHA3_512(DAGNode.qwords);
 
+    __global Node *DAG;
+    if (NodeIdx & 2)
+        DAG = (__global Node *) _DAG1;
+    else
+        DAG = (__global Node *) _DAG0;
+    NodeIdx &= ~2;
     //if (NodeIdx < DAG_SIZE)
-    DAG[NodeIdx] = DAGNode;
+    DAG[(NodeIdx / 2) | (NodeIdx & 1)] = DAGNode;
 }
