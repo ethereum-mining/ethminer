@@ -23,9 +23,9 @@ RUN mkdir build; \
 ENV ETHMINER_API_PORT=3000
 EXPOSE ${ETHMINER_API_PORT}
 
-# Prevent GPU overheading by stopping in 80C and starting again in 50C
-ENV GPU_TEMP_STOP=80
-ENV GPU_TEMP_START=50
+# Prevent GPU overheading by stopping in 90C and starting again in 60C
+ENV GPU_TEMP_STOP=90
+ENV GPU_TEMP_START=60
 
 # Start miner. Note that wallet address and worker name need to be set
 # in the container launch.
