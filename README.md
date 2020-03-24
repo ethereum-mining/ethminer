@@ -24,7 +24,7 @@
 * [Install](#install)
 * [Usage](#usage)
     * [Examples connecting to pools](#examples-connecting-to-pools)
-    * [Launch in Docker container](#examples-docker)
+    * [Launch in Docker container](#launch-in-docker-container)
 * [Build](#build)
     * [Continuous Integration and development builds](#continuous-integration-and-development-builds)
     * [Building from source](#building-from-source)
