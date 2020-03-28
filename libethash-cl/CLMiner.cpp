@@ -22,7 +22,7 @@ namespace eth
 // WARNING: Do not change the value of the following constant
 // unless you are prepared to make the neccessary adjustments
 // to the assembly code for the binary kernels.
-const size_t c_maxSearchResults = 15;
+const size_t c_maxSearchResults = 4;
 
 struct CLChannel : public LogChannel
 {
@@ -625,6 +625,11 @@ bool CLMiner::initDevice()
         cllog << "Unrecognized Platform";
         return false;
     }
+    if (!m_settings.noExit && (m_hwmoninfo.deviceType != HwMonitorInfoType::AMD))
+    {
+        m_settings.noExit = true;
+        cllog << "no exit option enabled for non AMD opencl device";
+    }
 
     if (m_deviceDescriptor.clPlatformVersionMajor == 1 &&
         (m_deviceDescriptor.clPlatformVersionMinor == 0 ||
@@ -839,8 +844,20 @@ bool CLMiner::initEpoch_internal()
                   << dev::getFormattedMemory(
                          (double)(m_deviceDescriptor.totalMemory - RequiredMemory));
             m_dag.clear();
-            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize / 2));
-            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize / 2));
+            if (m_epochContext.dagNumItems & 1)
+            {
+                m_dag.push_back(
+                    cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize / 2 + 64));
+                m_dag.push_back(
+                    cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize / 2 - 64));
+            }
+            else
+            {
+                m_dag.push_back(
+                    cl::Buffer(m_context[0], CL_MEM_READ_ONLY, (m_epochContext.dagSize) / 2));
+                m_dag.push_back(
+                    cl::Buffer(m_context[0], CL_MEM_READ_ONLY, (m_epochContext.dagSize) / 2));
+            }
             cllog << "Loading kernels";
 
             // If we have a binary kernel to use, let's try it

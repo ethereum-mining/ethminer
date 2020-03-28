@@ -31,7 +31,7 @@
         .arg target, "ulong", ulong
     .text
 
-        MAX_SEARCH_RESULTS = 15
+        MAX_SEARCH_RESULTS = 4
         result_count_offset = (MAX_SEARCH_RESULTS * 64)
 
         mix0 = %v24
