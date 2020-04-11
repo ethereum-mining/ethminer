@@ -876,6 +876,10 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                                   "EthereumStratum/1.0.0");
                 if (_isSuccess)
                 {
+                  
+                    std::string enonce = jResult.get(Json::Value::ArrayIndex(1), "").asString();
+                    if (!enonce.empty()) processExtranonce(enonce);
+
                     // Selected flavour is confirmed
                     m_conn->SetStratumMode(2, true);
                     cnote << "Stratum mode : EthereumStratum/1.0.0 (NiceHash)";
