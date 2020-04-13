@@ -881,13 +881,16 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     cnote << "Stratum mode : EthereumStratum/1.0.0 (NiceHash)";
                     startSession();
                     m_session->subscribed.store(true, memory_order_relaxed);
-
+                  
                     // Notify we're ready for extra nonce subscribtion on the fly
                     // reply to this message should not perform any logic
                     jReq["id"] = unsigned(2);
                     jReq["method"] = "mining.extranonce.subscribe";
                     jReq["params"] = Json::Value(Json::arrayValue);
                     send(jReq);
+                  
+                    std::string enonce = jResult.get(Json::Value::ArrayIndex(1), "").asString();
+                    if (!enonce.empty()) processExtranonce(enonce);
 
                     // Eventually request authorization
                     m_authpending.store(true, std::memory_order_relaxed);
