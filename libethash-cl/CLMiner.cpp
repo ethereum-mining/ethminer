@@ -442,7 +442,7 @@ void CLMiner::kick_miner()
     m_new_work_signal.notify_one();
 }
 
-void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection) 
+void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection)
 {
     // Load available platforms
     vector<cl::Platform> platforms = getPlatforms();
@@ -460,7 +460,9 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
             platformType = ClPlatformTypeEnum::Clover;
         else if (platformName == "NVIDIA CUDA")
             platformType = ClPlatformTypeEnum::Nvidia;
-        else 
+        else if (platformName.find("Intel") != string::npos)
+            platformType = ClPlatformTypeEnum::Intel;
+        else
         {
             std::cerr << "Unrecognized platform " << platformName << std::endl;
             continue;
@@ -513,6 +515,13 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
                       << (unsigned int)(t[22]) << "." << (unsigned int)(t[23]);
                     uniqueId = s.str();
                 }
+            }
+            else if (clDeviceType == DeviceTypeEnum::Gpu && platformType == ClPlatformTypeEnum::Intel)
+            {
+                std::ostringstream s;
+                s << "Intel GPU " << pIdx << "." << dIdx;
+                uniqueId = s.str();
+
             }
             else if (clDeviceType == DeviceTypeEnum::Cpu)
             {
@@ -619,6 +628,14 @@ bool CLMiner::initDevice()
         m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
         m_settings.noBinary = true;
     }
+    else if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Intel)
+    {
+        m_hwmoninfo.deviceType = HwMonitorInfoType::UNKNOWN;
+        m_hwmoninfo.devicePciId = m_deviceDescriptor.uniqueId;
+        m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
+        m_settings.noBinary = true;
+        m_settings.noExit = true;
+    }
     else
     {
         // Don't know what to do with this
@@ -650,7 +667,7 @@ bool CLMiner::initDevice()
     }
 
     ostringstream s;
-    s << "Using PciId : " << m_deviceDescriptor.uniqueId << " " << m_deviceDescriptor.clName;
+    s << "Using Device : " << m_deviceDescriptor.uniqueId << " " << m_deviceDescriptor.clName;
 
     if (!m_deviceDescriptor.clNvCompute.empty())
         s << " (Compute " + m_deviceDescriptor.clNvCompute + ")";
