@@ -683,7 +683,7 @@ bool CLMiner::initDevice()
 bool CLMiner::initEpoch_internal()
 {
     auto startInit = std::chrono::steady_clock::now();
-    size_t RequiredMemory = (m_epochContext.dagSize + m_epochContext.lightSize);
+    size_t RequiredMemory = (m_epochContext.dagSize);
 
     // Release the pause flag if any
     resume(MinerPauseEnum::PauseDueToInsufficientMemory);
@@ -834,10 +834,6 @@ bool CLMiner::initEpoch_internal()
         // create buffer for dag
         try
         {
-            cllog << "Creating light cache buffer, size: "
-                  << dev::getFormattedMemory((double)m_epochContext.lightSize);
-            m_light.clear();
-            m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.lightSize));
             cllog << "Creating DAG buffer, size: "
                   << dev::getFormattedMemory((double)m_epochContext.dagSize)
                   << ", free: "
@@ -858,6 +854,26 @@ bool CLMiner::initEpoch_internal()
                 m_dag.push_back(
                     cl::Buffer(m_context[0], CL_MEM_READ_ONLY, (m_epochContext.dagSize) / 2));
             }
+            cllog << "Creating light cache buffer, size: "
+                  << dev::getFormattedMemory((double)m_epochContext.lightSize);
+            m_light.clear();
+            bool light_on_host = false;
+            try
+            {
+                m_light.push_back(
+                    cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.lightSize));
+            }
+            catch (cl::Error const& err)
+            {
+                // Ok, no room for light cache on GPU. Try allocating on host
+                clog(WarnChannel) << "No room on GPU, allocating light cache on host";
+                clog(WarnChannel) << "Generating DAG will take minutes instead of seconds";
+                light_on_host = true;
+                m_light.clear();
+            }
+            if (light_on_host)
+                m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
+                    m_epochContext.lightSize));
             cllog << "Loading kernels";
 
             // If we have a binary kernel to use, let's try it
