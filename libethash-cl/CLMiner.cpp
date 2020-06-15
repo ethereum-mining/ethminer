@@ -860,20 +860,23 @@ bool CLMiner::initEpoch_internal()
             bool light_on_host = false;
             try
             {
-                m_light.push_back(
-                    cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.lightSize));
+                m_light.emplace_back(m_context[0], CL_MEM_READ_ONLY, m_epochContext.lightSize);
             }
             catch (cl::Error const& err)
             {
-                // Ok, no room for light cache on GPU. Try allocating on host
-                clog(WarnChannel) << "No room on GPU, allocating light cache on host";
-                clog(WarnChannel) << "Generating DAG will take minutes instead of seconds";
-                light_on_host = true;
-                m_light.clear();
+                if ((err.err() == CL_OUT_OF_RESOURCES) || (err.err() == CL_OUT_OF_HOST_MEMORY))
+                {
+                    // Ok, no room for light cache on GPU. Try allocating on host
+                    clog(WarnChannel) << "No room on GPU, allocating light cache on host";
+                    clog(WarnChannel) << "Generating DAG will take minutes instead of seconds";
+                    light_on_host = true;
+                }
+                else
+                    throw;
             }
             if (light_on_host)
-                m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
-                    m_epochContext.lightSize));
+                m_light.emplace_back(m_context[0], CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
+                    m_epochContext.lightSize);
             cllog << "Loading kernels";
 
             // If we have a binary kernel to use, let's try it
