@@ -132,6 +132,7 @@ The servers are listed in alphabetical order. To get best results reorder them f
 | [ethermine.org](#ethermineorg) | <https://ethermine.org/> | <https://ethermine.org/> |
 | [ethpool.org](#ethpoolorg) | <https://www.ethpool.org/> | <https://www.ethpool.org/> |
 | [f2pool.com](#f2poolcom) | <https://www.f2pool.com/> | <https://www.f2pool.com/help/?#tab-content-eth> |
+| [flexpool.io](#flexpoolio) | <https://flexpool.io/> | <https://flexpool.io/docs/getting-started/> |
 | [miningpoolhub.com](#miningpoolhubcom) | <https://miningpoolhub.com/> | <https://ethereum.miningpoolhub.com/> |
 | [nanopool.org](#nanopoolorg) | <https://nanopool.org/> | <https://eth.nanopool.org/help> |
 | [nicehash.com](#nicehashcom) | <https://www.nicehash.com/> | <https://www.nicehash.com/help/which-stratum-servers-are-available> |
@@ -218,6 +219,22 @@ SSL connection:
 
 ```
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@eth.f2pool.com:8008
+```
+
+### flexpool.io
+
+Non-SSL connection:
+
+```
+-P stratum1+tcp://ETH_WALLET.WORKERNAME@eu.flexpool.io:4444
+-P stratum1+tcp://ETH_WALLET.WORKERNAME@us.flexpool.io:4444
+```
+
+SSL connection:
+
+```
+-P stratum1+ssl://ETH_WALLET.WORKERNAME@eu.flexpool.io:5555
+-P stratum1+ssl://ETH_WALLET.WORKERNAME@us.flexpool.io:5555
 ```
 
 ### miningpoolhub.com
