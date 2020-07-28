@@ -77,7 +77,8 @@ enum class ClPlatformTypeEnum
     Unknown,
     Amd,
     Clover,
-    Nvidia
+    Nvidia,
+    Intel
 };
 
 enum class SolutionAccountingEnum
