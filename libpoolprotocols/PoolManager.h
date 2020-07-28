@@ -31,6 +31,7 @@ struct PoolSettings
     std::string hashRateId =
         h256::random().hex(HexPrefix::Add);  // Unique identifier for HashRate submission
     unsigned connectionMaxRetries = 3;  // Max number of connection retries
+    unsigned delayBeforeRetry = 0;      // Delay seconds before connect retry
     unsigned benchmarkBlock = 0;        // Block number used by SimulateClient to test performances
 };
 
@@ -68,6 +69,7 @@ private:
 
     void failovertimer_elapsed(const boost::system::error_code& ec);
     void submithrtimer_elapsed(const boost::system::error_code& ec);
+    void reconnecttimer_elapsed(const boost::system::error_code& ec);
 
     std::atomic<bool> m_running = {false};
     std::atomic<bool> m_stopping = {false};
@@ -85,6 +87,7 @@ private:
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_failovertimer;
     boost::asio::deadline_timer m_submithrtimer;
+    boost::asio::deadline_timer m_reconnecttimer;
 
     std::unique_ptr<PoolClient> p_client = nullptr;
 

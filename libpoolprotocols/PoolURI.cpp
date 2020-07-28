@@ -270,7 +270,7 @@ URI::URI(std::string uri, bool _sim) : m_uri{std::move(uri)}
     if (std::regex_search(m_hostinfo, matches, host_pattern, std::regex_constants::match_default))
     {
         m_host = matches[1].str();
-        m_port = boost::lexical_cast<unsigned short>(matches[2].str());
+        m_port = boost::lexical_cast<uint16_t>(matches[2].str());
     }
     else
     {
