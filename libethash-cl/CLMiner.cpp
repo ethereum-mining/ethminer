@@ -875,8 +875,11 @@ bool CLMiner::initEpoch_internal()
                     throw;
             }
             if (light_on_host)
+            {
                 m_light.emplace_back(m_context[0], CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
                     m_epochContext.lightSize);
+                cllog << "WARNING: Generating DAG will take minutes, not seconds";
+            }
             cllog << "Loading kernels";
 
             // If we have a binary kernel to use, let's try it

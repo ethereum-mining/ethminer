@@ -126,8 +126,11 @@ bool CUDAMiner::initEpoch_internal()
 
             // create buffer for cache
             if (lightOnHost)
+            {
                 CUDA_SAFE_CALL(cudaHostAlloc(reinterpret_cast<void**>(&light),
                     m_epochContext.lightSize, cudaHostAllocDefault));
+                cudalog << "WARNING: Generating DAG will take minutes, not seconds";
+            }
             else
                 CUDA_SAFE_CALL(
                     cudaMalloc(reinterpret_cast<void**>(&light), m_epochContext.lightSize));
@@ -157,6 +160,9 @@ bool CUDAMiner::initEpoch_internal()
 
         ethash_generate_dag(
             m_epochContext.dagSize, m_settings.gridSize, m_settings.blockSize, m_streams[0]);
+
+        if (lightOnHost)
+            CUDA_SAFE_CALL(cudaFreeHost(reinterpret_cast<void*>(light)));
 
         cudalog << "Generated DAG + Light in "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(
