@@ -367,7 +367,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
     using namespace std::chrono;
 
     // On timer cancelled or nothing to check for then early exit
-    if (ec == boost::asio::error::operation_aborted)
+    if ((ec == boost::asio::error::operation_aborted) || !m_conn)
     {
         return;
     }
