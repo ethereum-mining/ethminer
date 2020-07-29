@@ -708,7 +708,7 @@ bool CLMiner::initDevice()
 bool CLMiner::initEpoch_internal()
 {
     auto startInit = std::chrono::steady_clock::now();
-    size_t RequiredMemory = (m_epochContext.dagSize + m_epochContext.lightSize);
+    size_t RequiredMemory = (m_epochContext.dagSize);
 
     // Release the pause flag if any
     resume(MinerPauseEnum::PauseDueToInsufficientMemory);
@@ -859,10 +859,6 @@ bool CLMiner::initEpoch_internal()
         // create buffer for dag
         try
         {
-            cllog << "Creating light cache buffer, size: "
-                  << dev::getFormattedMemory((double)m_epochContext.lightSize);
-            m_light.clear();
-            m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.lightSize));
             cllog << "Creating DAG buffer, size: "
                   << dev::getFormattedMemory((double)m_epochContext.dagSize)
                   << ", free: "
@@ -882,6 +878,32 @@ bool CLMiner::initEpoch_internal()
                     cl::Buffer(m_context[0], CL_MEM_READ_ONLY, (m_epochContext.dagSize) / 2));
                 m_dag.push_back(
                     cl::Buffer(m_context[0], CL_MEM_READ_ONLY, (m_epochContext.dagSize) / 2));
+            }
+            cllog << "Creating light cache buffer, size: "
+                  << dev::getFormattedMemory((double)m_epochContext.lightSize);
+            m_light.clear();
+            bool light_on_host = false;
+            try
+            {
+                m_light.emplace_back(m_context[0], CL_MEM_READ_ONLY, m_epochContext.lightSize);
+            }
+            catch (cl::Error const& err)
+            {
+                if ((err.err() == CL_OUT_OF_RESOURCES) || (err.err() == CL_OUT_OF_HOST_MEMORY))
+                {
+                    // Ok, no room for light cache on GPU. Try allocating on host
+                    clog(WarnChannel) << "No room on GPU, allocating light cache on host";
+                    clog(WarnChannel) << "Generating DAG will take minutes instead of seconds";
+                    light_on_host = true;
+                }
+                else
+                    throw;
+            }
+            if (light_on_host)
+            {
+                m_light.emplace_back(m_context[0], CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
+                    m_epochContext.lightSize);
+                cllog << "WARNING: Generating DAG will take minutes, not seconds";
             }
             cllog << "Loading kernels";
 

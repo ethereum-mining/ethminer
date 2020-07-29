@@ -81,12 +81,14 @@ bool CUDAMiner::initEpoch_internal()
     bool retVar = false;
     m_current_target = 0;
     auto startInit = std::chrono::steady_clock::now();
-    size_t RequiredMemory = (m_epochContext.dagSize + m_epochContext.lightSize);
+    size_t RequiredTotalMemory = (m_epochContext.dagSize + m_epochContext.lightSize);
+    size_t RequiredDagMemory = m_epochContext.dagSize;
 
     // Release the pause flag if any
     resume(MinerPauseEnum::PauseDueToInsufficientMemory);
     resume(MinerPauseEnum::PauseDueToInitEpochError);
 
+    bool lightOnHost = false;
     try
     {
         hash128_t* dag;
@@ -104,21 +106,34 @@ bool CUDAMiner::initEpoch_internal()
             CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
             // Check whether the current device has sufficient memory every time we recreate the dag
-            if (m_deviceDescriptor.totalMemory < RequiredMemory)
+            if (m_deviceDescriptor.totalMemory < RequiredTotalMemory)
             {
-                cudalog << "Epoch " << m_epochContext.epochNumber << " requires "
-                        << dev::getFormattedMemory((double)RequiredMemory) << " memory.";
-                cudalog << "This device hasn't available. Mining suspended ...";
-                pause(MinerPauseEnum::PauseDueToInsufficientMemory);
-                return true;  // This will prevent to exit the thread and
-                              // Eventually resume mining when changing coin or epoch (NiceHash)
+                if (m_deviceDescriptor.totalMemory < RequiredDagMemory)
+                {
+                    cudalog << "Epoch " << m_epochContext.epochNumber << " requires "
+                            << dev::getFormattedMemory((double)RequiredDagMemory) << " memory.";
+                    cudalog << "This device hasn't enough memory available. Mining suspended ...";
+                    pause(MinerPauseEnum::PauseDueToInsufficientMemory);
+                    return true;  // This will prevent to exit the thread and
+                                  // Eventually resume mining when changing coin or epoch (NiceHash)
+                }
+                else
+                    lightOnHost = true;
             }
 
-            cudalog << "Generating DAG + Light : "
-                    << dev::getFormattedMemory((double)RequiredMemory);
+            cudalog << "Generating DAG + Light(on " << (lightOnHost ? "host" : "GPU")
+                    << ") : " << dev::getFormattedMemory((double)RequiredTotalMemory);
 
             // create buffer for cache
-            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), m_epochContext.lightSize));
+            if (lightOnHost)
+            {
+                CUDA_SAFE_CALL(cudaHostAlloc(reinterpret_cast<void**>(&light),
+                    m_epochContext.lightSize, cudaHostAllocDefault));
+                cudalog << "WARNING: Generating DAG will take minutes, not seconds";
+            }
+            else
+                CUDA_SAFE_CALL(
+                    cudaMalloc(reinterpret_cast<void**>(&light), m_epochContext.lightSize));
             m_allocated_memory_light_cache = m_epochContext.lightSize;
             CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), m_epochContext.dagSize));
             m_allocated_memory_dag = m_epochContext.dagSize;
@@ -133,7 +148,7 @@ bool CUDAMiner::initEpoch_internal()
         else
         {
             cudalog << "Generating DAG + Light (reusing buffers): "
-                    << dev::getFormattedMemory((double)RequiredMemory);
+                    << dev::getFormattedMemory((double)RequiredTotalMemory);
             get_constants(&dag, NULL, &light, NULL);
         }
 
@@ -151,7 +166,9 @@ bool CUDAMiner::initEpoch_internal()
                        std::chrono::steady_clock::now() - startInit)
                        .count()
                 << " ms. "
-                << dev::getFormattedMemory((double)(m_deviceDescriptor.totalMemory - RequiredMemory))
+                << dev::getFormattedMemory(
+                       lightOnHost ? (double)(m_deviceDescriptor.totalMemory - RequiredDagMemory) :
+                                     (double)(m_deviceDescriptor.totalMemory - RequiredTotalMemory))
                 << " left.";
 
         retVar = true;
@@ -271,7 +288,9 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
 
         try
         {
+            size_t freeMem, totalMem;
             CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
+            CUDA_SAFE_CALL(cudaMemGetInfo(&freeMem, &totalMem));
             s << setw(2) << setfill('0') << hex << props.pciBusID << ":" << setw(2)
               << props.pciDeviceID << ".0";
             uniqueId = s.str();
@@ -288,7 +307,7 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
             deviceDescriptor.cuDeviceIndex = i;
             deviceDescriptor.cuDeviceOrdinal = i;
             deviceDescriptor.cuName = string(props.name);
-            deviceDescriptor.totalMemory = props.totalGlobalMem;
+            deviceDescriptor.totalMemory = freeMem;
             deviceDescriptor.cuCompute =
                 (to_string(props.major) + "." + to_string(props.minor));
             deviceDescriptor.cuComputeMajor = props.major;
