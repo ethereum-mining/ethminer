@@ -217,8 +217,12 @@ do { \
         buffer[hash_id] = fnv(init0 ^ (a + x), s) % dag_size; \
     } \
     barrier(CLK_LOCAL_MEM_FENCE); \
-    __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag0; \
-    mix = fnv(mix, g_dag[buffer[hash_id]].uint8s[thread_id]); \
+    uint idx = buffer[hash_id]; \
+    __global hash128_t const* g_dag; \
+    g_dag = (__global hash128_t const*) _g_dag0; \
+    if (idx & 1) \
+        g_dag = (__global hash128_t const*) _g_dag1; \
+    mix = fnv(mix, g_dag[idx >> 1].uint8s[thread_id]); \
 } while(0)
 
 #else
