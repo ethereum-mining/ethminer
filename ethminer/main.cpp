@@ -112,7 +112,7 @@ public:
             minelog << logLine;
 
 #if ETH_DBUS
-            dbusint.send(Farm::f().Telemetry().str());
+            dbusint.send(Farm::f().Telemetry().str().c_str());
 #endif
             // Resubmit timer
             m_cliDisplayTimer.expires_from_now(boost::posix_time::seconds(m_cliDisplayInterval));
