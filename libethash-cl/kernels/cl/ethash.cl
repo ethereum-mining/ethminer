@@ -206,34 +206,22 @@ typedef union {
 #define MIX(x) \
 do { \
     if (get_local_id(0) == lane_idx) { \
-        uint s = mix.s0; \
-        s = select(mix.s1, s, (x) != 1); \
-        s = select(mix.s2, s, (x) != 2); \
-        s = select(mix.s3, s, (x) != 3); \
-        s = select(mix.s4, s, (x) != 4); \
-        s = select(mix.s5, s, (x) != 5); \
-        s = select(mix.s6, s, (x) != 6); \
-        s = select(mix.s7, s, (x) != 7); \
-        buffer[hash_id] = fnv(init0 ^ (a + x), s) % dag_size; \
+        buffer[hash_id] = fnv(init0 ^ (a + x), ((uint *)&mix)[x]) % dag_size; \
     } \
     barrier(CLK_LOCAL_MEM_FENCE); \
-    __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag0; \
-    mix = fnv(mix, g_dag[buffer[hash_id]].uint8s[thread_id]); \
+    uint idx = buffer[hash_id]; \
+    __global hash128_t const* g_dag; \
+    g_dag = (__global hash128_t const*) _g_dag0; \
+    if (idx & 1) \
+        g_dag = (__global hash128_t const*) _g_dag1; \
+    mix = fnv(mix, g_dag[idx >> 1].uint8s[thread_id]); \
 } while(0)
 
 #else
 
 #define MIX(x) \
 do { \
-    uint s = mix.s0; \
-    s = select(mix.s1, s, (x) != 1); \
-    s = select(mix.s2, s, (x) != 2); \
-    s = select(mix.s3, s, (x) != 3); \
-    s = select(mix.s4, s, (x) != 4); \
-    s = select(mix.s5, s, (x) != 5); \
-    s = select(mix.s6, s, (x) != 6); \
-    s = select(mix.s7, s, (x) != 7); \
-    buffer[get_local_id(0)] = fnv(init0 ^ (a + x), s) % dag_size; \
+    buffer[get_local_id(0)] = fnv(init0 ^ (a + x), ((uint *)&mix)[x]) % dag_size; \
     uint idx = buffer[lane_idx]; \
     __global hash128_t const* g_dag; \
     g_dag = (__global hash128_t const*) _g_dag0; \
