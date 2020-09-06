@@ -53,7 +53,7 @@ __global__ void ethash_calculate_dag_item(uint32_t start)
     if (((node_index >> 1) & (~1)) >= d_dag_size)
         return;
 
-    hash200_t dag_node;
+    hash128_t dag_node;
     copy(dag_node.uint4s, d_light[node_index % d_light_size].uint4s, 4);
     dag_node.words[0] ^= node_index;
     SHA3_512(dag_node.uint2s);
@@ -80,21 +80,7 @@ __global__ void ethash_calculate_dag_item(uint32_t start)
     }
     SHA3_512(dag_node.uint2s);
     hash64_t* dag_nodes = (hash64_t*)d_dag;
-
-    for (uint32_t t = 0; t < 4; t++)
-    {
-        uint32_t shuffle_index = SHFL(node_index, t, 4);
-        uint4 s[4];
-        for (uint32_t w = 0; w < 4; w++)
-        {
-            s[w] = make_uint4(SHFL(dag_node.uint4s[w].x, t, 4), SHFL(dag_node.uint4s[w].y, t, 4),
-                              SHFL(dag_node.uint4s[w].z, t, 4), SHFL(dag_node.uint4s[w].w, t, 4));
-        }
-        if (shuffle_index < d_dag_size * 2)
-        {
-            dag_nodes[shuffle_index].uint4s[thread_id] = s[thread_id];
-        }
-    }
+    copy(dag_nodes[node_index].uint4s, dag_node.uint4s, 4);
 }
 
 void ethash_generate_dag(
