@@ -20,8 +20,8 @@ set(SOURCES
 	${CMAKE_CURRENT_BINARY_DIR}/ethash.h
 )
 
-if(APPLE)
-	# On macOS use system OpenCL library.
+if(USE_SYS_OPENCL)
+	# On macOS or using ROCm-OpenCL, use system OpenCL library.
 	find_package(OpenCL REQUIRED)
 else()
 	hunter_add_package(OpenCL)
