@@ -14,17 +14,29 @@ branches:
 matrix:
     include:
         - os: linux
-          dist: trusty
+          dist: xenial
           sudo: required
           env:
               - CUDA=ON
               - CUDA_VERSION=9
         - os: linux
-          dist: trusty
+          dist: xenial
           sudo: required
           env:
               - CUDA=ON
               - CUDA_VERSION=8
+        - os: linux
+          dist: bionic
+          sudo: required
+          env:
+              - CUDA=ON
+              - CUDA_VERSION=10.2
+        - os: linux
+          dist: bionic
+          sudo: required
+          env:
+              - CUDA=ON
+              - CUDA_VERSION=11.2
         - os: osx
           osx_image: xcode9.2
           env:
@@ -46,7 +58,11 @@ before_install:
       sudo apt-get -q update
       sudo apt-get -qy install g++-6
       scripts/install_cmake.sh
-      . scripts/install-cuda-ubuntu1604.sh $CUDA_VERSION
+      if [ "$TRAVIS_DIST" = xenial ]; then
+        . scripts/install-cuda-ubuntu1604.sh $CUDA_VERSION
+      elif [ "$TRAVIS_DIST" = bionic ]; then
+        . scripts/install-cuda-ubuntu1804.sh $CUDA_VERSION
+      fi
       pyenv global 3.6
       pip install --user requests gitpython
       if [ "$CUDA_VERSION" = "8" ]; then
