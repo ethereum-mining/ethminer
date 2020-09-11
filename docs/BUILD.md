@@ -43,6 +43,8 @@ you have to install the OpenGL libraries. E.g. on Ubuntu run:
 sudo apt-get install mesa-common-dev
 ```
 
+If you want to use locally installed [ROCm-OpenCL](https://rocmdocs.amd.com/en/latest/) package, use build flag `-DUSE_SYS_OPENCL=ON` with cmake config.
+
 ### macOS
 
 1. GCC version >= TBF
@@ -143,6 +145,7 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 * `-DAPICORE=ON` - enable API Server, `ON` by default.
 * `-DBINKERN=ON` - install AMD binary kernels, `ON` by default.
 * `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
+* `-DUSE_SYS_OPENCL=ON` - Use system OpenCL, `OFF` by default, unless on macOS. Specify to use local **ROCm-OpenCL** package.
 
 ## Disable Hunter
 
