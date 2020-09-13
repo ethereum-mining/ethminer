@@ -15,7 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Gateless Gate Sharp.  If not, see <http://www.gnu.org/licenses/>.
 
-
+#define OPENCL_PLATFORM_UNKNOWN 0
+#define OPENCL_PLATFORM_AMD     1
+#define OPENCL_PLATFORM_CLOVER  2
+#define OPENCL_PLATFORM_NVIDIA  3
+#define OPENCL_PLATFORM_INTEL   4
 
 #if (defined(__Tahiti__) || defined(__Pitcairn__) || defined(__Capeverde__) || defined(__Oland__) || defined(__Hainan__))
 #define LEGACY
@@ -26,6 +30,22 @@
 #endif
 
 #if defined(cl_amd_media_ops)
+#if PLATFORM == OPENCL_PLATFORM_CLOVER
+/*
+ * MESA define cl_amd_media_ops but no amd_bitalign() defined.
+ * https://github.com/openwall/john/issues/3454#issuecomment-436899959
+ */
+uint2 amd_bitalign(uint2 src0, uint2 src1, uint2 src2)
+{
+    uint2 dst;
+    __asm("v_alignbit_b32 %0, %2, %3, %4\n"
+          "v_alignbit_b32 %1, %5, %6, %7"
+          : "=v" (dst.x), "=v" (dst.y)
+          : "v" (src0.x), "v" (src1.x), "v" (src2.x),
+            "v" (src0.y), "v" (src1.y), "v" (src2.y));
+    return dst;
+}
+#endif
 #pragma OPENCL EXTENSION cl_amd_media_ops : enable
 #elif defined(cl_nv_pragma_unroll)
 uint amd_bitalign(uint src0, uint src1, uint src2)
