@@ -1178,7 +1178,7 @@ std::string ApiConnection::getHttpMinerStatDetail()
         _ret << "<td class=right>" << device["hardware"]["sensors"][1].asString() << "</td>";
 
         stringstream powerStream; // Round the power to 2 decimal places to remove floating point garbage
-        powerStream << fixed << setprecision(2) << device["hardware"]["sensors"][2].asString();
+        powerStream << fixed << setprecision(2) << device["hardware"]["sensors"][2].asDouble();
         _ret << "<td class=right>" << powerStream.str() << "</td>";
 
         _ret << "</tr>";  // Close row
