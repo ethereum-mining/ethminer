@@ -67,7 +67,7 @@ The above samples produce the very same result.
 -P stratum://account%%2e1234.Worker:password@eu1.ethermine.org:4444
 ```  
 
-## Secure socket comunications for stratum only
+## Secure socket communications for stratum only
 
 Ethminer supports secure socket communications (where pool implements and offers it) to avoid the risk of a [man-in-the-middle attack](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)
 To enable it simply replace tcp with either:
@@ -104,7 +104,7 @@ Here you can find a collection of samples to connect to most commonly used ethas
 * Stratum connection is **always to be preferred** over **getwork** when pool offers it due to its better network latency.
 * If possible the samples use a protocol which supports reporting of hashrate (`--report-hashrate`) if pool supports this.
 
-**Check for updates in the pool connection settings visiting the pools homepage.**
+**Check for updates in the pool connection settings visiting the pool's homepage.**
 
 ## Variables
 
