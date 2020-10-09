@@ -252,6 +252,11 @@ HINTS:
 
 ### nanopool.org
 
+Notice ⚠
+
+* Use "%40" for the @-sign in your email address
+* Use "\%2e" for the .-sign on Linux in ETH_WALLET.WORKERNAME
+
 With email:
 
 ```
@@ -272,9 +277,6 @@ Without email:
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us-west1.nanopool.org:9999
 ```
 
-HINTS:
-
-* Use "%40" for the @-sign in your email address
 
 ### nicehash.com
 
