@@ -28,6 +28,14 @@ else()
 	if(NOT CUDA_VERSION VERSION_LESS 10.0)
 		list(APPEND CUDA_NVCC_FLAGS "-gencode arch=compute_75,code=sm_75")
 	endif()
+	if(NOT CUDA_VERSION VERSION_LESS 11.0)
+		# NVIDIA A100 and NVIDIA DGX-A100
+		list(APPEND CUDA_NVCC_FLAGS "-gencode arch=compute_80,code=sm_80")
+	endif()
+	if(NOT CUDA_VERSION VERSION_LESS 11.1)
+		# Tesla GA10x cards, RTX Ampere – RTX 3080/3090, RTX A6000, RTX A40
+		list(APPEND CUDA_NVCC_FLAGS "-gencode arch=compute_86,code=sm_86")
+	endif()
 endif()
 
 file(GLOB sources "*.cpp" "*.cu")
