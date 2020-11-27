@@ -8,3 +8,4 @@
 [submodule "cmake/ethash"]
 	path = cmake/ethash
 	url = https://github.com/etclabscore/cpp-etchash.git
+	branch = master
