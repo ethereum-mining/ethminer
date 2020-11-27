@@ -6,6 +6,5 @@
 	url = https://github.com/ethereum/cable
 	branch = master
 [submodule "cmake/ethash"]
-	path = cmake/cable
+	path = cmake/ethash
 	url = https://github.com/etclabscore/cpp-etchash.git
-	branch = master
