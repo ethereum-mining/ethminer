@@ -291,8 +291,9 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
             size_t freeMem, totalMem;
             CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
             CUDA_SAFE_CALL(cudaMemGetInfo(&freeMem, &totalMem));
-            s << setw(2) << setfill('0') << hex << props.pciBusID << ":" << setw(2)
-              << props.pciDeviceID << ".0";
+            s << setw(8) << setfill('0') << hex << props.pciDomainID << ":" 
+              << setw(2) << setfill('0') << hex << props.pciBusID << ":" 
+              << setw(2) << props.pciDeviceID << ".0";
             uniqueId = s.str();
 
             if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
