@@ -27,7 +27,7 @@ This project uses [CMake] and [Hunter] package manager.
 
 ### Linux
 
-1. GCC version >= 4.8
+1. 8 >= GCC version >= 4.8
 2. DBUS development libs if building with `-DETHDBUS`. E.g. on Ubuntu run:
 
 ```shell
