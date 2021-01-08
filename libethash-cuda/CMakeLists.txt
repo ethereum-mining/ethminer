@@ -43,5 +43,5 @@ file(GLOB headers "*.h" "*.cuh")
 
 cuda_add_library(ethash-cuda STATIC ${sources} ${headers})
 target_link_libraries(ethash-cuda ethcore ethash::ethash Boost::thread)
-target_include_directories(ethash-cuda PUBLIC ${CUDA_INCLUDE_DIRS})
+target_include_directories(ethash-cuda PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 target_include_directories(ethash-cuda PRIVATE .. ${CMAKE_CURRENT_BINARY_DIR})

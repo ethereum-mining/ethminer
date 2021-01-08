@@ -17,5 +17,5 @@ target_include_directories(hwmon PRIVATE ..)
 
 if (ETHASHCUDA)
 	find_package(CUDA REQUIRED)
-	target_include_directories(hwmon PUBLIC ${CUDA_INCLUDE_DIRS})
+	target_include_directories(hwmon PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 endif()
