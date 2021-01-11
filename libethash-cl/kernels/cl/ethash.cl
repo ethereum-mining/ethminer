@@ -266,7 +266,7 @@ struct SearchResults {
 
 __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
 __kernel void search(
-    __global struct SearchResults* restrict g_output,
+    __global volatile struct SearchResults* restrict g_output,
     __constant uint2 const* g_header,
     __global ulong8 const* _g_dag0,
     __global ulong8 const* _g_dag1,
