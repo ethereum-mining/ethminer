@@ -1039,18 +1039,18 @@ public:
                  << "                        0 Parallel load mode (each GPU independently)" << endl
                  << "                        1 Sequential load mode (one GPU after another)" << endl
                  << endl
-                 << "    --tstart            UINT[30 .. 100] Default = 0" << endl
-                 << "                        Suspend mining on GPU which temperature is above"
-                 << endl
-                 << "                        this threshold. Implies --HWMON 1" << endl
-                 << "                        If not set or zero no temp control is performed"
-                 << endl
-                 << "    --tstop             UINT[30 .. 100] Default = 40" << endl
+                 << "    --tstart            UINT[30 .. 100] Default = 40" << endl
                  << "                        Resume mining on previously overheated GPU when "
                     "temp"
                  << endl
                  << "                        drops below this threshold. Implies --HWMON 1" << endl
                  << "                        Must be lower than --tstart" << endl
+                 << "    --tstop             UINT[30 .. 100] Default = 0" << endl
+                 << "                        Suspend mining on GPU which temperature is above"
+                 << endl
+                 << "                        this threshold. Implies --HWMON 1" << endl
+                 << "                        If not set or zero no temp control is performed"
+                 << endl
                  << "    -v,--verbosity      INT[0 .. 255] Default = 0 " << endl
                  << "                        Set output verbosity level. Use the sum of :" << endl
                  << "                        1   to log stratum json messages" << endl
