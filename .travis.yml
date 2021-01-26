@@ -60,10 +60,12 @@ before_install:
       scripts/install_cmake.sh
       if [ "$TRAVIS_DIST" = xenial ]; then
         . scripts/install-cuda-ubuntu1604.sh $CUDA_VERSION
+        pyenv install 3.6.3
+        pyenv global 3.6.3
       elif [ "$TRAVIS_DIST" = bionic ]; then
         . scripts/install-cuda-ubuntu1804.sh $CUDA_VERSION
+        pyenv global 3.6
       fi
-      pyenv global 3.6
       pip install --user requests gitpython
       if [ "$CUDA_VERSION" = "8" ]; then
         sudo apt-get -qy install g++-5
