@@ -59,10 +59,12 @@ before_install:
       sudo apt-get -qy install g++-6
       scripts/install_cmake.sh
       if [ "$TRAVIS_DIST" = xenial ]; then
+        sudo apt-get -qy install mesa-common-dev
         . scripts/install-cuda-ubuntu1604.sh $CUDA_VERSION
         pyenv install 3.6.3
         pyenv global 3.6.3
       elif [ "$TRAVIS_DIST" = bionic ]; then
+        sudo apt-get -qy install libglu1-mesa-dev
         . scripts/install-cuda-ubuntu1804.sh $CUDA_VERSION
         pyenv global 3.6
       fi
