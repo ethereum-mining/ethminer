@@ -128,6 +128,7 @@ The servers are listed in alphabetical order. To get best results reorder them f
 | Pool Name | Pool Homepage | Details about connection |
 | --------- | ------------- | - |
 | [2miners.com](#2minerscom) | <https://2miners.com/> | <https://eth.2miners.com/en/help> |
+| [pool.binance.com](#poolbinancecom) | <https://pool.binance.com/> | <https://www.binance.com/en/support/faq/f77a002dca084b22ab2e13ccf2f13f18> |
 | [dwarfpool.org](#dwarfpoolorg) | <https://dwarfpool.com/> | <https://dwarfpool.com/eth> |
 | [ethermine.org](#ethermineorg) | <https://ethermine.org/> | <https://ethermine.org/> |
 | [ethpool.org](#ethpoolorg) | <https://www.ethpool.org/> | <https://www.ethpool.org/> |
@@ -143,6 +144,19 @@ The servers are listed in alphabetical order. To get best results reorder them f
 
 ```
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@eth.2miners.com:2020
+```
+
+### pool.binance.com
+
+Notice ⚠
+
+* ETH_WALLET is not needed as it will directly mine to your MINING_ACCOUNT
+
+```
+-P stratum1+tcp://MINING_ACCOUNT.WORKERNAME@ethash.poolbinance.com:3333
+-P stratum1+tcp://MINING_ACCOUNT.WORKERNAME@ethash.poolbinance.com:443
+-P stratum1+tcp://MINING_ACCOUNT.WORKERNAME@ethash.poolbinance.com:25
+-P stratum1+tcp://MINING_ACCOUNT.WORKERNAME@ethash.poolbinance.com:1800
 ```
 
 ### dwarfpool.org
