@@ -7,6 +7,7 @@
 using namespace std;
 using namespace dev;
 using namespace eth;
+using namespace boost::placeholders;
 
 using boost::asio::ip::tcp;
 

@@ -29,6 +29,8 @@ else()
 endif()
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${jsoncpp_INCLUDE_DIR})
+include_directories(${OpenCL_INCLUDE_DIR})
 include_directories(..)
 
 add_library(ethash-cl ${SOURCES})

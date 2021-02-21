@@ -5,6 +5,8 @@ set(SOURCES
 )
 
 include_directories(BEFORE ..)
+include_directories(${jsoncpp_INCLUDE_DIR})
+include_directories(${OpenCL_INCLUDE_DIR})
 
 add_library(ethcore ${SOURCES})
 target_link_libraries(ethcore PUBLIC devcore ethash::ethash PRIVATE hwmon)

@@ -3,6 +3,8 @@ cmake_policy(SET CMP0015 NEW)
 aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ..)
+include_directories(${jsoncpp_INCLUDE_DIR})
+include_directories(${OpenCL_INCLUDE_DIR})
 
 set(EXECUTABLE ethminer)
 
