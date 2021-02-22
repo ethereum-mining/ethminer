@@ -150,10 +150,10 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 ## Disable Hunter
 
 If you want to install dependencies yourself or use system package manager you can disable Hunter by adding
-[`-DHUNTER_ENABLED=OFF`](https://docs.hunter.sh/en/latest/reference/user-variables.html#hunter-enabled)
+[`-DHUNTER_ENABLED=OFF`](https://hunter.readthedocs.io/en/latest/reference/user-variables.html#hunter-enabled)
 to the configuration options.
 
 
 [CMake]: https://cmake.org/
 [CMake Build Tool Mode]: https://cmake.org/cmake/help/latest/manual/cmake.1.html#build-tool-mode
-[Hunter]: https://docs.hunter.sh/
+[Hunter]: https://hunter.readthedocs.io/en/latest/
