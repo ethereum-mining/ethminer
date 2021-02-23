@@ -74,3 +74,8 @@ node_modules/
 
 # vscode
 .vscode/
+
+#vim
+.cache/
+compile_commands.json
+
