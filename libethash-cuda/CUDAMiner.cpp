@@ -328,6 +328,9 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
     }
 }
 
+const double TARGET_GPU_PERCENTAGE = 0.9;
+
+
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t initial_start_nonce, const dev::eth::WorkPackage& w)
 {
@@ -360,6 +363,7 @@ void CUDAMiner::search(
 	for (current_index = 0; current_index < m_settings.streams; current_index++)
 	{
 		threads.emplace_back(new std::thread([&running, this, current_index, &streamsCompleted, &atomic_start_nonce, &w]() {
+			auto start = std::chrono::steady_clock::now();
 			while (running)
 			{
 				// Each pass of this loop will wait for a stream to exit,
@@ -396,8 +400,25 @@ void CUDAMiner::search(
 				// restart the stream on the next batch of nonces
 				// unless we are done for this round.
 				if (running)
+				{
+					if (TARGET_GPU_PERCENTAGE != 1.0)
+					{
+						//Becuase we run one thread per stream, we need to lower the 
+						//targeted sleep ratio for this thread so that all threads combined total the 
+						//targeted GPU percentage
+						double usage_ratio = TARGET_GPU_PERCENTAGE / m_settings.streams;
+						double micros_taken = std::chrono::duration_cast<std::chrono::microseconds>(
+								std::chrono::steady_clock::now() - start).count();
+						double sleep_micros = micros_taken * (1.0 / usage_ratio - 1);
+
+						std::this_thread::sleep_for(std::chrono::microseconds((std::uint64_t) sleep_micros));
+
+					}
+					start = std::chrono::steady_clock::now();
 					run_ethash_search(
 						m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce);
+
+				}
 		
 				if (found_count)
 				{
@@ -448,12 +469,10 @@ void CUDAMiner::search(
 		std::this_thread::sleep_for(std::chrono::microseconds(500));
     }
 	running = false;
-	std::cout << "stopping theard" << std::endl;
 	for (unsigned int i = 0; i < m_settings.streams; i++)
 	{
 		threads[i]->join();
 	}
-	std::cout << threads.size() << " threads finished" << std::endl;
 
 #ifdef DEV_BUILD
     // Optionally log job switch time
