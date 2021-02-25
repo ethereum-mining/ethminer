@@ -40,7 +40,7 @@ If you're planning to use [OpenCL on Linux](https://github.com/ruslo/hunter/wiki
 you have to install the OpenGL libraries. E.g. on Ubuntu run:
 
 ```shell
-sudo apt-get install mesa-common-dev
+sudo apt-get install mesa-common-dev opencl-c-headers
 ```
 
 If you want to use locally installed [ROCm-OpenCL](https://rocmdocs.amd.com/en/latest/) package, use build flag `-DUSE_SYS_OPENCL=ON` with cmake config.
