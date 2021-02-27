@@ -1255,7 +1255,7 @@ private:
     // Global boost's io_service
     std::thread m_io_thread;                        // The IO service thread
     boost::asio::deadline_timer m_cliDisplayTimer;  // The timer which ticks display lines
-    boost::asio::io_service::strand m_io_strand;    // A strand to serialize posts in
+    boost::asio::io_context::strand m_io_strand;    // A strand to serialize posts in
                                                     // multithreaded environment
 
     // Physical Mining Devices descriptor

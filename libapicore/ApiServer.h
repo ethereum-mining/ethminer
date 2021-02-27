@@ -22,7 +22,7 @@ class ApiConnection
 {
 public:
 
-    ApiConnection(boost::asio::io_service::strand& _strand, int id, bool readonly, string password);
+    ApiConnection(boost::asio::io_context::strand& _strand, int id, bool readonly, string password);
 
     ~ApiConnection() = default;
 
@@ -57,7 +57,7 @@ private:
     int m_sessionId;
 
     tcp::socket m_socket;
-    boost::asio::io_service::strand& m_io_strand;
+    boost::asio::io_context::strand& m_io_strand;
     boost::asio::streambuf m_sendBuffer;
     boost::asio::streambuf m_recvBuffer;
     Json::StreamWriterBuilder m_jSwBuilder;
@@ -92,6 +92,6 @@ private:
     string m_address;
     uint16_t m_portnumber;
     tcp::acceptor m_acceptor;
-    boost::asio::io_service::strand m_io_strand;
+    boost::asio::io_context::strand m_io_strand;
     std::vector<std::shared_ptr<ApiConnection>> m_sessions;
 };

@@ -469,6 +469,8 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
             platformType = ClPlatformTypeEnum::Nvidia;
         else if (platformName.find("Intel") != string::npos)
             platformType = ClPlatformTypeEnum::Intel;
+        else if (platformName.find("Apple") != string::npos)
+            platformType = ClPlatformTypeEnum::Apple;
         else
         {
             std::cerr << "Unrecognized platform " << platformName << std::endl;
@@ -523,7 +525,9 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
                     uniqueId = s.str();
                 }
             }
-            else if (clDeviceType == DeviceTypeEnum::Gpu && platformType == ClPlatformTypeEnum::Intel)
+            else if (clDeviceType == DeviceTypeEnum::Gpu && 
+                     (platformType == ClPlatformTypeEnum::Intel ||
+                         platformType == ClPlatformTypeEnum::Apple))
             {
                 std::ostringstream s;
                 s << "Intel GPU " << pIdx << "." << dIdx;
@@ -635,7 +639,7 @@ bool CLMiner::initDevice()
         m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
         m_settings.noBinary = true;
     }
-    else if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Intel)
+    else if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Intel || m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Apple)
     {
         m_hwmoninfo.deviceType = HwMonitorInfoType::UNKNOWN;
         m_hwmoninfo.devicePciId = m_deviceDescriptor.uniqueId;

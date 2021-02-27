@@ -78,7 +78,8 @@ enum class ClPlatformTypeEnum
     Amd,
     Clover,
     Nvidia,
-    Intel
+    Intel,
+    Apple
 };
 
 enum class SolutionAccountingEnum

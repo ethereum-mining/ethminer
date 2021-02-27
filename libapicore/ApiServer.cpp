@@ -351,7 +351,7 @@ void ApiConnection::disconnect()
 }
 
 ApiConnection::ApiConnection(
-    boost::asio::io_service::strand& _strand, int id, bool readonly, string password)
+    boost::asio::io_context::strand& _strand, int id, bool readonly, string password)
   : m_sessionId(id),
     m_socket(g_io_service),
     m_io_strand(_strand),
