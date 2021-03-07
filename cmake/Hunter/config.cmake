@@ -9,5 +9,5 @@ hunter_config(
     OpenSSL
     URL "https://www.openssl.org/source/openssl-1.1.1j.tar.gz"
     SHA1 "04c340b086828eecff9df06dceff196790bb9268"
-    CMAKE_ARGS configure_architectures=arm64
+    CMAKE_ARGS configure_architectures=${CMAKE_SYSTEM_PROCESSOR}
 )
