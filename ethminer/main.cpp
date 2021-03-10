@@ -344,7 +344,8 @@ public:
         app.add_option("--cuda-streams,--cu-streams", m_CUSettings.streams, "", true)
             ->check(CLI::Range(1, 99));
 
-        app.add_option("--cuda-target-usage,--cu-target-usage", m_CUSettings.targetUsage, "", true)->check(CLI::Range(0.0f, 1.0f));
+        app.add_option("--cuda-target-usage,--cu-target-usage", m_CUSettings.targetUsage, "", true)
+            ->check(CLI::Range(0.0f, 1.0f));
 
 #endif
 

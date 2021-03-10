@@ -16,13 +16,12 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <libethcore/Farm.h>
-#include <atomic>
-#include <chrono>
-#include <cstdint>
 #include <ethash/ethash.hpp>
 #include <memory>
 #include <atomic>
 #include <thread>
+#include <chrono>
+#include <cstdint>
 
 #include "CUDAMiner.h"
 
@@ -352,91 +351,91 @@ void CUDAMiner::search(
         run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer, initial_start_nonce);
     }
 
-	volatile bool running = true;
-	std::atomic_uint streamsCompleted(0);
+    volatile bool running = true;
+    std::atomic_uint streamsCompleted(0);
 
-	std::atomic_uint64_t atomic_start_nonce(initial_start_nonce);
+    std::atomic_uint64_t atomic_start_nonce(initial_start_nonce);
 
-	std::vector<std::unique_ptr<std::thread>> threads;
-	for (current_index = 0; current_index < m_settings.streams; current_index++)
-	{
-		threads.emplace_back(new std::thread([&running, this, current_index, &streamsCompleted, &atomic_start_nonce, &w]() {
-			auto start = std::chrono::steady_clock::now();
-			while (running)
-			{
-				// Each pass of this loop will wait for a stream to exit,
-				// save any found solutions, then restart the stream
-				// on the next group of nonces.
-				cudaStream_t stream = m_streams[current_index];
-		
-				// Wait for the stream complete
-				CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
-		
-				// Detect solutions in current stream's solution buffer
-				volatile Search_results& buffer(*m_search_buf[current_index]);
-				uint32_t found_count = std::min((unsigned)buffer.count, MAX_SEARCH_RESULTS);
-		
-				uint32_t gids[MAX_SEARCH_RESULTS];
-				h256 mixes[MAX_SEARCH_RESULTS];
-		
-				if (found_count)
-				{
-					buffer.count = 0;
-		
-					// Extract solution and pass to higer level
-					// using io_service as dispatcher
-		
-					for (uint32_t i = 0; i < found_count; i++)
-					{
-						gids[i] = buffer.result[i].gid;
-						memcpy(mixes[i].data(), (void*)&buffer.result[i].mix,
-							sizeof(buffer.result[i].mix));
-					}
-				}
-				std::uint64_t start_nonce = atomic_start_nonce.fetch_add(m_batch_size);
-		
-				// restart the stream on the next batch of nonces
-				// unless we are done for this round.
-				if (running)
-				{
-					if (m_settings.targetUsage != 1.0)
-					{
-						//Becuase we run one thread per stream, we need to lower the 
-						//targeted sleep ratio for this thread so that all threads combined total the 
-						//targeted GPU percentage
-						double usage_ratio = m_settings.targetUsage / static_cast<float>(m_settings.streams);
-						double micros_taken = std::chrono::duration_cast<std::chrono::microseconds>(
-								std::chrono::steady_clock::now() - start).count();
-						double sleep_micros = micros_taken * (1.0 / usage_ratio - 1);
+    std::vector<std::unique_ptr<std::thread>> threads;
+    for (current_index = 0; current_index < m_settings.streams; current_index++)
+    {
+        threads.emplace_back(new std::thread([&running, this, current_index, &streamsCompleted, &atomic_start_nonce, &w]() {
+            auto start = std::chrono::steady_clock::now();
+            while (running)
+            {
+                // Each pass of this loop will wait for a stream to exit,
+                // save any found solutions, then restart the stream
+                // on the next group of nonces.
+                cudaStream_t stream = m_streams[current_index];
+        
+                // Wait for the stream complete
+                CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
+        
+                // Detect solutions in current stream's solution buffer
+                volatile Search_results& buffer(*m_search_buf[current_index]);
+                uint32_t found_count = std::min((unsigned)buffer.count, MAX_SEARCH_RESULTS);
+        
+                uint32_t gids[MAX_SEARCH_RESULTS];
+                h256 mixes[MAX_SEARCH_RESULTS];
+        
+                if (found_count)
+                {
+                    buffer.count = 0;
+        
+                    // Extract solution and pass to higer level
+                    // using io_service as dispatcher
+        
+                    for (uint32_t i = 0; i < found_count; i++)
+                    {
+                        gids[i] = buffer.result[i].gid;
+                        memcpy(mixes[i].data(), (void*)&buffer.result[i].mix,
+                            sizeof(buffer.result[i].mix));
+                    }
+                }
+                std::uint64_t start_nonce = atomic_start_nonce.fetch_add(m_batch_size);
+        
+                // restart the stream on the next batch of nonces
+                // unless we are done for this round.
+                if (running)
+                {
+                    if (m_settings.targetUsage != 1.0)
+                    {
+                        //Becuase we run one thread per stream, we need to lower the 
+                        //targeted sleep ratio for this thread so that all threads combined total the 
+                        //targeted GPU percentage
+                        double usage_ratio = m_settings.targetUsage / static_cast<float>(m_settings.streams);
+                        double micros_taken = std::chrono::duration_cast<std::chrono::microseconds>(
+                                std::chrono::steady_clock::now() - start).count();
+                        double sleep_micros = micros_taken * (1.0 / usage_ratio - 1);
 
-						std::this_thread::sleep_for(std::chrono::microseconds((std::uint64_t) sleep_micros));
+                        std::this_thread::sleep_for(std::chrono::microseconds((std::uint64_t) sleep_micros));
 
-					}
-					start = std::chrono::steady_clock::now();
-					run_ethash_search(
-						m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce);
+                    }
+                    start = std::chrono::steady_clock::now();
+                    run_ethash_search(
+                        m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce);
 
-				}
-		
-				if (found_count)
-				{
-					uint64_t nonce_base = start_nonce - m_streams_batch_size;
-					for (uint32_t i = 0; i < found_count; i++)
-					{
-						uint64_t nonce = nonce_base + gids[i];
-		
-						Farm::f().submitProof(
-							Solution{nonce, mixes[i], w, std::chrono::steady_clock::now(), m_index});
-						cudalog << EthWhite << "Job: " << w.header.abridged() << " Sol: 0x"
-								<< toHex(nonce) << EthReset;
-					}
-				}
-				streamsCompleted++;
+                }
+        
+                if (found_count)
+                {
+                    uint64_t nonce_base = start_nonce - m_streams_batch_size;
+                    for (uint32_t i = 0; i < found_count; i++)
+                    {
+                        uint64_t nonce = nonce_base + gids[i];
+        
+                        Farm::f().submitProof(
+                            Solution{nonce, mixes[i], w, std::chrono::steady_clock::now(), m_index});
+                        cudalog << EthWhite << "Job: " << w.header.abridged() << " Sol: 0x"
+                                << toHex(nonce) << EthReset;
+                    }
+                }
+                streamsCompleted++;
 
-			}
+            }
 
-		}));
-	}
+        }));
+    }
 
     // process stream batches until we get new work.
     bool done = false;
@@ -451,12 +450,12 @@ void CUDAMiner::search(
         if (!done)
             done = paused();
 
-		if (streamsCompleted >= m_settings.streams)
-		{
-			streamsCompleted -= m_settings.streams;
-			// Update the hash rate
-			updateHashRate(m_batch_size, m_settings.streams);
-		}
+        if (streamsCompleted >= m_settings.streams)
+        {
+            streamsCompleted -= m_settings.streams;
+            // Update the hash rate
+            updateHashRate(m_batch_size, m_settings.streams);
+        }
 
         // Bail out if it's shutdown time
         if (shouldStop())
@@ -464,13 +463,12 @@ void CUDAMiner::search(
             m_new_work.store(false, std::memory_order_relaxed);
             break;
         }
-		std::this_thread::sleep_for(std::chrono::microseconds(500));
     }
-	running = false;
-	for (unsigned int i = 0; i < m_settings.streams; i++)
-	{
-		threads[i]->join();
-	}
+    running = false;
+    for (unsigned int i = 0; i < m_settings.streams; i++)
+    {
+        threads[i]->join();
+    }
 
 #ifdef DEV_BUILD
     // Optionally log job switch time
