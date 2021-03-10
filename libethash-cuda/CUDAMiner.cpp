@@ -328,8 +328,6 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
     }
 }
 
-const double TARGET_GPU_PERCENTAGE = 0.9;
-
 
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t initial_start_nonce, const dev::eth::WorkPackage& w)
@@ -401,12 +399,12 @@ void CUDAMiner::search(
 				// unless we are done for this round.
 				if (running)
 				{
-					if (TARGET_GPU_PERCENTAGE != 1.0)
+					if (m_settings.targetUsage != 1.0)
 					{
 						//Becuase we run one thread per stream, we need to lower the 
 						//targeted sleep ratio for this thread so that all threads combined total the 
 						//targeted GPU percentage
-						double usage_ratio = TARGET_GPU_PERCENTAGE / m_settings.streams;
+						double usage_ratio = m_settings.targetUsage / static_cast<float>(m_settings.streams);
 						double micros_taken = std::chrono::duration_cast<std::chrono::microseconds>(
 								std::chrono::steady_clock::now() - start).count();
 						double sleep_micros = micros_taken * (1.0 / usage_ratio - 1);

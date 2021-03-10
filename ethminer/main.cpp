@@ -344,6 +344,8 @@ public:
         app.add_option("--cuda-streams,--cu-streams", m_CUSettings.streams, "", true)
             ->check(CLI::Range(1, 99));
 
+        app.add_option("--cuda-target-usage,--cu-target-usage", m_CUSettings.targetUsage, "", true)->check(CLI::Range(0.0f, 1.0f));
+
 #endif
 
 #if ETH_ETHASHCPU
@@ -923,6 +925,8 @@ public:
                  << endl
                  << "    --cu-parallel-hash  UINT {1,2,4,8} Default = 4" << endl
                  << "                        Set the number of hashes per kernel" << endl
+                 << "    --cu-target-usage   FLOAT {0.0 .. 1.0} Default = 1.0" << endl
+                 << "                        Set the target gpu usage" << endl
                  << "    --cu-streams        INT [1 .. 99] Default = 2" << endl
                  << "                        Set the number of streams per GPU" << endl
                  << "    --cu-schedule       TEXT Default = 'sync'" << endl
