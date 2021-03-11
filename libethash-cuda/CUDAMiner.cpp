@@ -352,9 +352,9 @@ void CUDAMiner::search(
     }
 
     volatile bool running = true;
-    std::atomic_uint streamsCompleted(0);
+    std::atomic<std::uint32_t> streamsCompleted(0);
 
-    std::atomic_uint64_t atomic_start_nonce(initial_start_nonce);
+    std::atomic<std::uint64_t> atomic_start_nonce(initial_start_nonce);
 
     std::vector<std::unique_ptr<std::thread>> threads;
     for (current_index = 0; current_index < m_settings.streams; current_index++)
