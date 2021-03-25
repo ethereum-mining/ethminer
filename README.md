@@ -1,5 +1,23 @@
 # ethminer
 
+## Build on macOS
+
+git clone https://github.com/sowson/ethminer.git ethminer
+
+cd ethminer
+
+git clone https://github.com/ethereum/cable.git cmake/cable
+
+mkdir build
+
+cd build
+
+cmake ..
+
+make
+
+make install
+
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg)](https://github.com/RichardLitt/standard-readme)
 [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)][Gitter]
 [![Releases](https://img.shields.io/github/downloads/ethereum-mining/ethminer/total.svg)][Releases]
