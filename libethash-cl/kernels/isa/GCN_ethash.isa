@@ -34,6 +34,14 @@
     .driver_version 2906007
     .include "GCN_ethash_globaldata.isa"
     .include "GCN5_ethash_search.isa"
+.elseifgpu gfx908
+    .driver_version 2906007
+    .include "GCN_ethash_globaldata.isa"
+    .include "GCN5_ethash_search.isa"
+.elseifgpu gfx908:sramecc+:xnack-
+    .driver_version 2906007
+    .include "GCN_ethash_globaldata.isa"
+    .include "GCN5_ethash_search.isa"
 .else
     .error "Unsupported GPU!"
 .endif
