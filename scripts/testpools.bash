@@ -71,11 +71,15 @@ POOLS="$POOLS stratum1+tcp://ETH_WALLET.WORKERNAME@us1.ethpool.org:3333"
 #f2pool.com
 POOLS="$POOLS stratum1+tcp://ETH_WALLET.WORKERNAME@eth.f2pool.com:8008"
 #flexpool.io
-POOLS="$POOLS stratum1+tcp://ETH_WALLET.WORKERNAME@eu.flexpool.io:4444"
-POOLS="$POOLS stratum1+tcp://ETH_WALLET.WORKERNAME@us.flexpool.io:4444"
+POOLS="$POOLS stratum1+tcp://ETH_WALLET.WORKERNAME@eth-de.flexpool.io:4444"
+POOLS="$POOLS stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us-east.flexpool.io:4444"
+POOLS="$POOLS stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us-west.flexpool.io:4444"
+POOLS="$POOLS stratum1+tcp://ETH_WALLET.WORKERNAME@eth-sg.flexpool.io:4444"
 #flexpool.io-ssl
-POOLS="$POOLS stratum1+ssl://ETH_WALLET.WORKERNAME@eu.flexpool.io:5555"
-POOLS="$POOLS stratum1+ssl://ETH_WALLET.WORKERNAME@us.flexpool.io:5555"
+POOLS="$POOLS stratum1+ssl://ETH_WALLET.WORKERNAME@eth-de.flexpool.io:5555"
+POOLS="$POOLS stratum1+ssl://ETH_WALLET.WORKERNAME@eth-us-east.flexpool.io:5555"
+POOLS="$POOLS stratum1+ssl://ETH_WALLET.WORKERNAME@eth-us-west.flexpool.io:5555"
+POOLS="$POOLS stratum1+ssl://ETH_WALLET.WORKERNAME@eth-sg.flexpool.io:5555"
 #miningpoolhub.com
 POOLS="$POOLS stratum2+tcp://USERNAME%2eWORKERNAME:WORKERPWD@asia.ethash-hub.miningpoolhub.com:20535"
 POOLS="$POOLS stratum2+tcp://USERNAME%2eWORKERNAME:WORKERPWD@europe.ethash-hub.miningpoolhub.com:20535"
