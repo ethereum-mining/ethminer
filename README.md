@@ -92,7 +92,7 @@ Ordered alphabetically. [Contributors statistics since 2015-08-20].
 | EoD                   | [@EoD](https://github.com/EoD)                               |     |
 | Genoil                | [@Genoil](https://github.com/Genoil)                         |     |
 | goobur                | [@goobur](https://github.com/goobur)                         |     |
-| Marius van der Wijden | [@MariusVanDerWijden](https://github.com/MariusVanDerWijden) | ETH: 0x57d22b967c9dc64e5577f37edf1514c2d8985099 |
+| Marius van der Wijden | [@MariusVanDerWijden](https://github.com/MariusVanDerWijden) |     |
 | Paweł Bylica          | [@chfast](https://github.com/chfast)                         |     |
 | Philipp Andreas       | [@smurfy](https://github.com/smurfy)                         |     |
 | Stefan Oberhumer      | [@StefanOberhumer](https://github.com/StefanOberhumer)       |     |
@@ -131,9 +131,9 @@ Because of the GDDR5X memory, which can't be fully utilized for ETH mining (yet)
 
 Only GCN 1.0 GPUs (78x0, 79x0, 270, 280), but in a different way. You'll see that on each new epoch (30K blocks), the hashrate will go down a little bit.
 
-### Can I still mine ETH with my 2GB GPU?
+### Can I still mine ETH with my 4GB GPU?
 
-Not really, your VRAM must be above the DAG size (Currently about 2.15 GB.) to get best performance. Without it severe hash loss will occur.
+Not really, your VRAM must be above the DAG size (Currently about 4.023 GB.) to get best performance. Without it severe hash loss will occur.
 
 ### What are the optimal launch parameters?
 

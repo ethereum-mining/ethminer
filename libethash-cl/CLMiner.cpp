@@ -768,7 +768,7 @@ bool CLMiner::initEpoch_internal()
         addDefinition(code, "WORKSIZE", m_settings.localWorkSize);
         addDefinition(code, "ACCESSES", 64);
         addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
-        addDefinition(code, "PLATFORM", m_deviceDescriptor.clPlatformId);
+        addDefinition(code, "PLATFORM", static_cast<unsigned>(m_deviceDescriptor.clPlatformType));
         addDefinition(code, "COMPUTE", computeCapability);
 
         if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
