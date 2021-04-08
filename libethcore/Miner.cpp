@@ -183,18 +183,9 @@ void Miner::updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept
     auto us = duration_cast<microseconds>(t - m_hashTime).count();
     m_hashTime = t;
 
-    float rate = us ? (float(m_groupCount * _groupSize) * 1.0e6f) / us : 0.0f;
-    
-    m_hashRate.store(rate, std::memory_order_relaxed);
+    m_hashRate.store(
+        us ? (float(m_groupCount * _groupSize) * 1.0e6f) / us : 0.0f, std::memory_order_relaxed);
     m_groupCount = 0;
-
-    static auto startTime = std::chrono::steady_clock::now();
-    if (!m_HashRateCSV) {
-        m_HashRateCSV.reset(new std::ofstream());
-        m_HashRateCSV->open("hash_rate.csv");
-    }
-    double time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - startTime).count() / 1000000.0;
-    *m_HashRateCSV << time << "," << rate << std::endl;
 }
 
 

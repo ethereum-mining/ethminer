@@ -16,12 +16,8 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <libethcore/Farm.h>
-#include <atomic>
-#include <chrono>
-#include <cstdint>
 #include <ethash/ethash.hpp>
-#include <memory>
-#include <thread>
+#include <chrono>
 
 #include "CUDAMiner.h"
 
@@ -313,7 +309,8 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
             deviceDescriptor.cuDeviceOrdinal = i;
             deviceDescriptor.cuName = string(props.name);
             deviceDescriptor.totalMemory = freeMem;
-            deviceDescriptor.cuCompute = (to_string(props.major) + "." + to_string(props.minor));
+            deviceDescriptor.cuCompute =
+                (to_string(props.major) + "." + to_string(props.minor));
             deviceDescriptor.cuComputeMajor = props.major;
             deviceDescriptor.cuComputeMinor = props.minor;
 
@@ -325,7 +322,6 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
         }
     }
 }
-
 
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t start_nonce, const dev::eth::WorkPackage& w)

@@ -41,20 +41,12 @@ public:
     void search(
         uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w);
 
-
 protected:
     bool initDevice() override;
 
     bool initEpoch_internal() override;
 
     void kick_miner() override;
-
-    void searchFast(
-        uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w);
-
-    void searchWithUsage(
-        uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w);
-
 
 private:
     atomic<bool> m_new_work = {false};

@@ -21,8 +21,6 @@
 #include <list>
 #include <numeric>
 #include <string>
-#include <memory>
-#include <fstream>
 
 #include "EthashAux.h"
 #include <libdevcore/Common.h>
@@ -455,8 +453,6 @@ protected:
     DeviceDescriptor m_deviceDescriptor;  // Info about the device
 
     EpochContext m_epochContext;
-
-    std::unique_ptr<std::ofstream> m_HashRateCSV;
 
 #ifdef DEV_BUILD
     std::chrono::steady_clock::time_point m_workSwitchStart;
