@@ -92,6 +92,7 @@ enum class SolutionAccountingEnum
 struct MinerSettings
 {
     vector<unsigned> devices;
+    float targetUsage = 1.0;
 };
 
 // Holds settings for CUDA Miner
@@ -101,7 +102,6 @@ struct CUSettings : public MinerSettings
     unsigned schedule = 4;
     unsigned gridSize = 8192;
     unsigned blockSize = 128;
-    float targetUsage = 1.0;
 };
 
 // Holds settings for OpenCL Miner
