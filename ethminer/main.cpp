@@ -344,6 +344,9 @@ public:
         app.add_option("--cuda-streams,--cu-streams", m_CUSettings.streams, "", true)
             ->check(CLI::Range(1, 99));
 
+        app.add_option("--cuda-usleep,--cu-usleep", m_CUSettings.usleep, "", true)
+                    ->check(CLI::Range(-1, 1000000));
+
 #endif
 
 #if ETH_ETHASHCPU
