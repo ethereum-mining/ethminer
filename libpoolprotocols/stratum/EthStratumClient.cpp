@@ -344,12 +344,12 @@ void EthStratumClient::start_connect()
         if (m_conn->SecLevel() != SecureLevel::NONE)
         {
             m_securesocket->lowest_layer().async_connect(m_endpoint,
-                m_io_strand.wrap(boost::bind(&EthStratumClient::connect_handler, this, _1)));
+                m_io_strand.wrap(boost::bind(&EthStratumClient::connect_handler, this, boost::placeholders::_1)));
         }
         else
         {
             m_socket->async_connect(m_endpoint,
-                m_io_strand.wrap(boost::bind(&EthStratumClient::connect_handler, this, _1)));
+                m_io_strand.wrap(boost::bind(&EthStratumClient::connect_handler, this, boost::placeholders::_1)));
         }
     }
     else
