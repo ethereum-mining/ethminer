@@ -30,6 +30,10 @@
     .driver_version 257000
     .include "GCN_ethash_globaldata.isa"
     .include "GCN5_ethash_search.isa"
+.elseifgpu gfx902
+    .driver_version 257000
+    .include "GCN_ethash_globaldata.isa"
+    .include "GCN5_ethash_search.isa"
 .elseifgpu gfx906
     .driver_version 2906007
     .include "GCN_ethash_globaldata.isa"
