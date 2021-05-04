@@ -68,7 +68,7 @@ hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)
 
 hunter_add_package(ethash)
-find_package(ethash CONFIG REQUIRED)
+find_package(ethash 0.6.0 CONFIG REQUIRED)
 
 configureProject()
 
