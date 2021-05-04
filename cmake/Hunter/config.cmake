@@ -7,8 +7,6 @@ hunter_config(
 hunter_config(
     Boost
     VERSION 1.76.0
-    SHA1 a5ab6eaf31d1ca181a17ecffef9d58d40d87c71d
-    URL https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
 )
 
 hunter_config(
