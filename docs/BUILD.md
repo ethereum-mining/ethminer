@@ -156,4 +156,4 @@ to the configuration options.
 
 [CMake]: https://cmake.org/
 [CMake Build Tool Mode]: https://cmake.org/cmake/help/latest/manual/cmake.1.html#build-tool-mode
-[Hunter]: https://docs.hunter.sh/
+[Hunter]: https://hunter.readthedocs.io/en/latest/
