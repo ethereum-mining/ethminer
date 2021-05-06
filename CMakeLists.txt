@@ -14,8 +14,8 @@ cable_configure_toolchain(DEFAULT cxx11)
 set(HUNTER_CONFIGURATION_TYPES Release CACHE STRING "Build type of Hunter packages")
 set(HUNTER_JOBS_NUMBER 6 CACHE STRING "Number of parallel builds used by Hunter")
 HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.23.112.tar.gz"
-    SHA1 "4b894e1d5d203f0cc9a77431dbb1b486ab6f4430"
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.300.tar.gz"
+    SHA1 "1151d539465d9cdbc880ee30f794864aec11c448"
     LOCAL
 )
 
@@ -68,7 +68,7 @@ hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)
 
 hunter_add_package(ethash)
-find_package(ethash CONFIG REQUIRED)
+find_package(ethash 0.6.0 CONFIG REQUIRED)
 
 configureProject()
 
