@@ -135,7 +135,7 @@ The servers are listed in alphabetical order. To get best results reorder them f
 | [flexpool.io](#flexpoolio) | <https://flexpool.io/> | <https://flexpool.io/docs/getting-started/> |
 | [miningpoolhub.com](#miningpoolhubcom) | <https://miningpoolhub.com/> | <https://ethereum.miningpoolhub.com/> |
 | [nanopool.org](#nanopoolorg) | <https://nanopool.org/> | <https://eth.nanopool.org/help> |
-| [nicehash.com](#nicehashcom) | <https://www.nicehash.com/> | <https://www.nicehash.com/help/which-stratum-servers-are-available> |
+| [nicehash.com](#nicehashcom) | <https://www.nicehash.com/> | <https://www.nicehash.com/support/mining-help/mining-advanced-topics/which-stratum-servers-are-available> |
 | [sparkpool.com](#sparkpoolcom) | <https://sparkpool.com/> | <https://eth.sparkpool.com/> |
 | [whalesburg.com](#whalesburgcom) | <https://whalesburg.com/> | <https://whalesburg.com/start_mining/> |
 
