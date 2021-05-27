@@ -402,8 +402,13 @@ void CUDAMiner::search(
             // restart the stream on the next batch of nonces
             // unless we are done for this round.
             if (!done)
+            {
+                if (m_settings.usleep >= 0) {
+                    usleep(m_settings.usleep);
+                }
                 run_ethash_search(
                     m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce);
+            }
 
             if (found_count)
             {
