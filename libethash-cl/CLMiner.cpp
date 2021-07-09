@@ -509,18 +509,44 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
                       << (unsigned int)(slot_id >> 3) << "." << (unsigned int)(slot_id & 0x7);
                     uniqueId = s.str();
                 }
+                else
+                {
+                   /* No Nvidia extensions */
+                   std::ostringstream s;
+                   s << "Nvidia:" << pIdx << "." << dIdx;
+                   uniqueId = s.str();
+                }
             }
             else if (clDeviceType == DeviceTypeEnum::Gpu &&
                      (platformType == ClPlatformTypeEnum::Amd ||
                          platformType == ClPlatformTypeEnum::Clover))
             {
-                cl_char t[24];
-                if (clGetDeviceInfo(device.get(), 0x4037, sizeof(t), &t, NULL) == CL_SUCCESS)
+                struct amd_topo {
+                  cl_char padding[21];
+                  cl_char bus;
+                  cl_char device;
+                  cl_char function;
+                } amd_topo;
+
+                if (clGetDeviceInfo(device.get(), CL_DEVICE_TOPOLOGY_AMD,
+                                    sizeof(amd_topo), &amd_topo, NULL)
+                     == CL_SUCCESS)
                 {
                     std::ostringstream s;
-                    s << setfill('0') << setw(2) << hex << (unsigned int)(t[21]) << ":" << setw(2)
-                      << (unsigned int)(t[22]) << "." << (unsigned int)(t[23]);
+                    s << setfill('0') << setw(2) << hex
+                      << (unsigned int)(amd_topo.bus)
+                      << ":" << setw(2)
+                      << (unsigned int)(amd_topo.device)
+                      << "."
+                      << (unsigned int)(amd_topo.function);
                     uniqueId = s.str();
+                }
+                else
+                {
+                   /* No AMD extensions */
+                   std::ostringstream s;
+                   s << "AMD:" << pIdx << "." << dIdx;
+                   uniqueId = s.str();
                 }
             }
             else if (clDeviceType == DeviceTypeEnum::Gpu && platformType == ClPlatformTypeEnum::Intel)
