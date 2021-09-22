@@ -26,12 +26,24 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
+<<<<<<< HEAD
+=======
+#include "EthashAux.h"
+
+#define MINER_WAIT_STATE_WORK    1
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 
 #include <boost/format.hpp>
 #include <boost/thread.hpp>
 
+<<<<<<< HEAD
 #define DAG_LOAD_MODE_PARALLEL 0
 #define DAG_LOAD_MODE_SEQUENTIAL 1
+=======
+#define DAG_LOAD_MODE_PARALLEL   0
+#define DAG_LOAD_MODE_SEQUENTIAL 1
+#define DAG_LOAD_MODE_SINGLE     2
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 
 using namespace std;
 
@@ -61,61 +73,111 @@ enum class MinerType
     Mixed,
     CL,
     CUDA,
+<<<<<<< HEAD
     CPU
+=======
+    Fpga
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 };
 
 enum class HwMonitorInfoType
 {
     UNKNOWN,
     NVIDIA,
+<<<<<<< HEAD
     AMD,
     CPU
+=======
+    AMD
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 };
 
 enum class ClPlatformTypeEnum
 {
+<<<<<<< HEAD
     Unknown,
     Amd,
     Clover,
     Nvidia,
     Intel
+=======
+    UNKNOWN,
+    OPENCL,
+    CUDA,
+    FPGA
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 };
 
 enum class SolutionAccountingEnum
 {
+<<<<<<< HEAD
     Accepted,
     Rejected,
     Wasted,
     Failed
+=======
+    HwMonitorInfoType deviceType = HwMonitorInfoType::UNKNOWN;
+    HwMonitorIndexSource indexSource = HwMonitorIndexSource::UNKNOWN;
+    int deviceIndex = -1;
+
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 };
 
 struct MinerSettings
 {
+<<<<<<< HEAD
     vector<unsigned> devices;
+=======
+    int tempC = 0;
+    int fanP = 0;
+    double powerW = 0;
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 };
 
 // Holds settings for CUDA Miner
 struct CUSettings : public MinerSettings
 {
+<<<<<<< HEAD
     unsigned streams = 2;
     unsigned schedule = 4;
     unsigned gridSize = 8192;
     unsigned blockSize = 128;
 };
+=======
+    string power = "";
+    if(_hw.powerW != 0){
+        ostringstream stream;
+        stream << fixed << setprecision(0) << _hw.powerW << "W";
+        power = stream.str();
+    }
+    return os << _hw.tempC << "C " << _hw.fanP << "% " << power;
+}
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 
 // Holds settings for OpenCL Miner
 struct CLSettings : public MinerSettings
 {
+<<<<<<< HEAD
     bool noBinary = false;
     bool noExit = false;
     unsigned globalWorkSize = 0;
     unsigned globalWorkSizeMultiplier = 65536;
     unsigned localWorkSize = 128;
+=======
+    uint64_t hashes = 0;        ///< Total number of hashes computed.
+    uint64_t ms = 0;            ///< Total number of milliseconds of mining thus far.
+    uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
+
+    std::vector<uint64_t> minersHashes;
+    std::vector<HwMonitor> minerMonitors;
+    uint64_t minerRate(const uint64_t hashCount) const { return ms == 0 ? 0 : hashCount * 1000 / ms; }
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 };
 
 // Holds settings for CPU Miner
 struct CPSettings : public MinerSettings
 {
+<<<<<<< HEAD
 };
 
 struct SolutionAccountType
@@ -207,11 +269,54 @@ struct HwMonitorInfo
     HwMonitorInfoType deviceType = HwMonitorInfoType::UNKNOWN;
     string devicePciId;
     int deviceIndex = -1;
+=======
+    float mh = _p.rate() / 1000000.0f;
+    _out << "Speed "
+         << EthTealBold << std::fixed << std::setw(6) << std::setprecision(2) << mh << EthReset
+         << " Mh/s    ";
+
+    for (size_t i = 0; i < _p.minersHashes.size(); ++i)
+    {
+        mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
+        _out << "gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset;
+        if (_p.minerMonitors.size() == _p.minersHashes.size())
+            _out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
+        _out << "  ";
+    }
+
+    return _out;
+}
+
+class SolutionStats {
+public:
+    void accepted() { accepts++;  }
+    void rejected() { rejects++;  }
+    void failed()   { failures++; }
+
+    void acceptedStale() { acceptedStales++; }
+    void rejectedStale() { rejectedStales++; }
+
+    void reset() { accepts = rejects = failures = acceptedStales = rejectedStales = 0; }
+
+    unsigned getAccepts()           { return accepts; }
+    unsigned getRejects()           { return rejects; }
+    unsigned getFailures()          { return failures; }
+    unsigned getAcceptedStales()    { return acceptedStales; }
+    unsigned getRejectedStales()    { return rejectedStales; }
+private:
+    unsigned accepts  = 0;
+    unsigned rejects  = 0;
+    unsigned failures = 0;
+
+    unsigned acceptedStales = 0;
+    unsigned rejectedStales = 0;
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 };
 
 /// Pause mining
 enum MinerPauseEnum
 {
+<<<<<<< HEAD
     PauseDueToOverHeating,
     PauseDueToAPIRequest,
     PauseDueToFarmPaused,
@@ -219,6 +324,10 @@ enum MinerPauseEnum
     PauseDueToInitEpochError,
     Pause_MAX  // Must always be last as a placeholder of max count
 };
+=======
+    return os << "[A" << s.getAccepts() << "+" << s.getAcceptedStales() << ":R" << s.getRejects() << "+" << s.getRejectedStales() << ":F" << s.getFailures() << "]";
+}
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 
 /// Keeps track of progress for farm and miners
 struct TelemetryType
@@ -317,6 +426,7 @@ struct TelemetryType
 class FarmFace
 {
 public:
+<<<<<<< HEAD
     FarmFace() { m_this = this; }
     static FarmFace& f() { return *m_this; };
 
@@ -324,6 +434,9 @@ public:
     virtual unsigned get_tstart() = 0;
     virtual unsigned get_tstop() = 0;
     virtual unsigned get_ergodicity() = 0;
+=======
+    virtual ~FarmFace() = default;
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.
@@ -331,12 +444,17 @@ public:
      * @return true iff the solution was good (implying that mining should be .
      */
     virtual void submitProof(Solution const& _p) = 0;
+<<<<<<< HEAD
     virtual void accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accounting) = 0;
     virtual uint64_t get_nonce_scrambler() = 0;
     virtual unsigned get_segment_width() = 0;
 
 private:
     static FarmFace* m_this;
+=======
+    virtual void failedSolution() = 0;
+    virtual uint64_t get_nonce_scrambler() = 0;
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 };
 
 /**
@@ -420,6 +538,7 @@ public:
 
     void TriggerHashRateUpdate() noexcept;
 
+<<<<<<< HEAD
 protected:
     /**
      * @brief Initializes miner's device.
@@ -447,10 +566,43 @@ protected:
     static unsigned s_dagLoadMode;   // Way dag should be loaded
     static unsigned s_dagLoadIndex;  // In case of serialized load of dag this is the index of miner
                                      // which should load next
+=======
+    Miner(std::string const& _name, FarmFace& _farm, size_t _index):
+        Worker(_name + std::to_string(_index)),
+        index(_index),
+        farm(_farm)
+    {}
+
+    virtual ~Miner() = default;
+
+    void setWork(WorkPackage const& _work)
+    {
+        {
+            Guard l(x_work);
+            m_work = _work;
+            workSwitchStart = std::chrono::high_resolution_clock::now();
+        }
+        kick_miner();
+    }
+
+    uint64_t hashCount() const { return m_hashCount.load(std::memory_order_relaxed); }
+
+    void resetHashCount() { m_hashCount.store(0, std::memory_order_relaxed); }
+
+    unsigned Index() { return index; };
+    HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
+
+    uint64_t get_start_nonce()
+    {
+        // Each GPU is given a non-overlapping 2^40 range to search
+        return farm.get_nonce_scrambler() + ((uint64_t) index << 40);
+    }
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 
     const unsigned m_index = 0;           // Ordinal index of the Instance (not the device)
     DeviceDescriptor m_deviceDescriptor;  // Info about the device
 
+<<<<<<< HEAD
     EpochContext m_epochContext;
 
 #ifdef DEV_BUILD
@@ -472,6 +624,33 @@ private:
     std::atomic<float> m_hashRate = {0.0};
     uint64_t m_groupCount = 0;
     atomic<bool> m_hashRateUpdate = {false};
+=======
+    /**
+     * @brief No work left to be done. Pause until told to kickOff().
+     */
+    virtual void kick_miner() = 0;
+
+    WorkPackage work() const { Guard l(x_work); return m_work; }
+
+    void addHashCount(uint64_t _n) { m_hashCount.fetch_add(_n, std::memory_order_relaxed); }
+
+    static unsigned s_dagLoadMode;
+    static unsigned s_dagLoadIndex;
+    static unsigned s_dagCreateDevice;
+    static uint8_t* s_dagInHostMemory;
+    static bool s_exit;
+    static bool s_noeval;
+
+    const size_t index = 0;
+    FarmFace& farm;
+    std::chrono::high_resolution_clock::time_point workSwitchStart;
+    HwMonitorInfo m_hwmoninfo;
+private:
+    std::atomic<uint64_t> m_hashCount = {0};
+
+    WorkPackage m_work;
+    mutable Mutex x_work;
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 };
 
 }  // namespace eth

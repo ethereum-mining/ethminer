@@ -1,8 +1,10 @@
 cmake_policy(SET CMP0015 NEW)
+set(CMAKE_CXX_FLAGS "-Wno-ignored-qualifiers -Wno-deprecated-declarations -Wno-unused-parameter -Wno-ignored-attributes -Wno-unused-function")
 
 aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ..)
+include_directories(../libethash-ocl)
 
 set(EXECUTABLE ethminer)
 
@@ -16,6 +18,7 @@ endif()
 hunter_add_package(CLI11)
 find_package(CLI11 CONFIG REQUIRED)
 
+<<<<<<< HEAD
 target_link_libraries(ethminer PRIVATE ethcore poolprotocols devcore ethminer-buildinfo CLI11::CLI11 Boost::system Boost::thread)
 
 if(ETHDBUS)
@@ -25,10 +28,21 @@ if(ETHDBUS)
 	include_directories(${DBUS_INCLUDE_DIRS})
 	link_directories(${DBUS_LIBRARY_DIRS})
 	target_link_libraries(ethminer PRIVATE ${DBUS_LIBRARIES})
+=======
+target_link_libraries(ethminer PRIVATE ethash-ocl ethcore poolprotocols devcore ethminer-buildinfo)
+
+if(ETHDBUS)
+    find_package(PkgConfig)
+    set( ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/lib/x86_64-linux-gnu/pkgconfig" )
+    pkg_check_modules(DBUS dbus-1)
+    include_directories(${DBUS_INCLUDE_DIRS})
+    link_directories(${DBUS_LIBRARY_DIRS})
+    target_link_libraries(${EXECUTABLE} ${DBUS_LIBRARIES})
+>>>>>>> d0edd204915db4bedfa757d0ca9e1e734619688c
 endif()
 
 if(APICORE)
-	target_link_libraries(ethminer PRIVATE apicore)
+    target_link_libraries(ethminer PRIVATE apicore)
 endif()
 
 include(GNUInstallDirs)
