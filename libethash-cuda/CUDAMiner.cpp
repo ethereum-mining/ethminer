@@ -179,7 +179,9 @@ bool CUDAMiner::initEpoch_internal()
                 << m_deviceDescriptor.uniqueId;
         cudalog << "Mining suspended ...";
         pause(MinerPauseEnum::PauseDueToInitEpochError);
-        retVar = true;
+        string _what = "GPU error when generating DAG!";
+        throw std::runtime_error(_what);
+        retVar = false;
     }
 
     return retVar;
