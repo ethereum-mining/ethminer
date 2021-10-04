@@ -11,8 +11,13 @@ os: "Visual Studio 2017"
 environment:
   matrix:
     - CUDA_VER: "8.0"
+      CUVER: 8
     - CUDA_VER: "9.1"
+      CUVER: 9
     - CUDA_VER: "10.0"
+      CUVER: 10
+    - CUDA_VER: "11.1.0"
+      CUVER: 11
   HUNTER_CACHE_TOKEN:
     secure: VnpF1MH5MEFvUI5MiMMMFlmbDdst+bfom5ZFVgalYPp/SYDhbejjXJm9Dla/IgpC
 
@@ -20,29 +25,53 @@ cache:
   - C:\CUDA\v8.0 -> appveyor.yml
   - C:\CUDA\v9.1 -> appveyor.yml
   - C:\CUDA\v10.0 -> appveyor.yml
+  - C:\CUDA\v11.0.3 -> appveyor.yml
+  - C:\CUDA\v11.1.0 -> appveyor.yml
+  - C:\CUDA\v11.2.0 -> appveyor.yml
 
 # Download CUDA Windows installer (local) and extract /compiler/* to /CUDA/vX.0/ zip archive.
-install: |
-  git submodule update --init --recursive
-  if "%CUDA_VER%" == "8.0" set CUDA_ARCHIVE=cuda_8.0.61_windows-exe
-  if "%CUDA_VER%" == "9.1" set CUDA_ARCHIVE=cuda_9.1.85_windows
-  if "%CUDA_VER%" == "10.0" set CUDA_ARCHIVE=cuda_10.0.130_411.31_windows
-  if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" NEQ "8.0" curl -L https://developer.nvidia.com/compute/cuda/%CUDA_VER%/Prod/local_installers/%CUDA_ARCHIVE% -o %CUDA_ARCHIVE%.exe)
-  if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" == "8.0" curl -L https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_windows-exe -o %CUDA_ARCHIVE%.exe)
-  if NOT EXIST C:\CUDA mkdir C:\CUDA
-  if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" NEQ "8.0" 7z x %CUDA_ARCHIVE%.exe -oC:\CUDA nvcc/* nvrtc*/*)
-  if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" == "8.0" 7z x %CUDA_ARCHIVE%.exe -oC:\CUDA compiler/* nvrtc*/*)
-  if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" NEQ "8.0" rename C:\CUDA\nvcc v%CUDA_VER%)
-  if NOT EXIST C:\CUDA\v%CUDA_VER% (if "%CUDA_VER%" == "8.0" rename C:\CUDA\compiler v%CUDA_VER%)
+install:
+  - git submodule update --init --recursive
+  - if "%CUDA_VER%" == "8.0" set CUDA_ARCHIVE=cuda_8.0.61_windows-exe
+  - if "%CUDA_VER%" == "9.1" set CUDA_ARCHIVE=cuda_9.1.85_windows
+  - if "%CUDA_VER%" == "10.0" set CUDA_ARCHIVE=cuda_10.0.130_411.31_windows
+  - if "%CUDA_VER%" == "11.0.3" set CUDA_ARCHIVE=cuda_11.0.3_451.82_win10
+  - if "%CUDA_VER%" == "11.1.0" set CUDA_ARCHIVE=cuda_11.1.0_456.43_win10
+  - if "%CUDA_VER%" == "11.2.0" set CUDA_ARCHIVE=cuda_11.2.0_460.89_win10
+  - if NOT EXIST C:\CUDA\v%CUDA_VER% (
+      if "%CUDA_VER%" == "8.0" (
+        curl -L https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_windows-exe -o %CUDA_ARCHIVE%.exe
+      ) else if %CUVER% GEQ 11 (
+        curl -L https://developer.download.nvidia.com/compute/cuda/%CUDA_VER%/local_installers/%CUDA_ARCHIVE%.exe -o %CUDA_ARCHIVE%.exe
+      ) else (
+        curl -L https://developer.nvidia.com/compute/cuda/%CUDA_VER%/Prod/local_installers/%CUDA_ARCHIVE% -o %CUDA_ARCHIVE%.exe
+      )
+    )
 
-  set PATH=C:\Python36-x64;C:\Python36-x64\Scripts;%PATH%;C:\CUDA\v%CUDA_VER%\bin
-  pip install requests gitpython
-  nvcc -V
+  - if NOT EXIST C:\CUDA mkdir C:\CUDA
+  - if NOT EXIST C:\CUDA\v%CUDA_VER% (
+      if "%CUDA_VER%" == "8.0" (7z x %CUDA_ARCHIVE%.exe -oC:\CUDA compiler/* nvrtc*/*)
+      else if %CUVER% GEQ 11 (7z x %CUDA_ARCHIVE%.exe -oC:\CUDA cuda_nvcc/nvcc/* cuda_cudart/* cuda_nvrtc/nvrtc*/*)
+      else (7z x %CUDA_ARCHIVE%.exe -oC:\CUDA nvcc/* nvrtc*/*)
+    )
+  - if NOT EXIST C:\CUDA\v%CUDA_VER% (
+      if "%CUDA_VER%" == "8.0" (rename C:\CUDA\compiler v%CUDA_VER%)
+      else if %CUVER% GEQ 11 (move C:\CUDA\cuda_nvcc\nvcc C:\CUDA\v%CUDA_VER% && move C:\CUDA\cuda_cudart\cudart C:\CUDA\v%CUDA_VER%\ )
+      else (rename C:\CUDA\nvcc v%CUDA_VER%)
+    )
+  - if EXIST C:\CUDA\v%CUDA_VER%\cudart (
+      xcopy C:\CUDA\v%CUDA_VER%\cudart\* C:\CUDA\v%CUDA_VER%\ /S /Y
+    )
+
+  - set PATH=C:\Python36-x64;C:\Python36-x64\Scripts;%PATH%;C:\CUDA\v%CUDA_VER%\bin
+  - pip install requests gitpython
+  - nvcc -V
 
 build_script:
   - call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\Common7\Tools\VsMSBuildCmd.bat"
   - set CMAKE_ARGS=-G "Visual Studio 15 2017 Win64" -H. -Bbuild -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS%
-  - if "%CUDA_VER%" NEQ "10.0" set CMAKE_ARGS=%CMAKE_ARGS% -T v140
+  - if "%CUDA_VER%" == "8.0" set CMAKE_ARGS=%CMAKE_ARGS% -T v140
+  - if "%CUDA_VER%" == "9.1" set CMAKE_ARGS=%CMAKE_ARGS% -T v140
   - cmake %CMAKE_ARGS%
   - cmake --build build --config Release --target package
   - ps: |
