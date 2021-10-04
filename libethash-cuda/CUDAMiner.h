@@ -25,6 +25,8 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <functional>
 
+extern bool g_exitOnNewEpoch;
+
 namespace dev
 {
 namespace eth

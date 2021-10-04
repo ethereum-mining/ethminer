@@ -216,6 +216,11 @@ void CUDAMiner::workLoop()
             // Epoch change ?
             if (current.epoch != w.epoch)
             {
+                if (current.epoch != -1 && g_exitOnNewEpoch)
+                {
+                    std::cerr << "Epoch change, miner exit!" << std::endl;
+                    raise(SIGTERM);
+                }
                 if (!initEpoch())
                     break;  // This will simply exit the thread
 
