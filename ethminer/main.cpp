@@ -307,7 +307,7 @@ public:
 
 #endif
 
-#if ETH_ETHASHCL || ETH_ETHASHCUDA || ETH_ETHASH_CPU
+#if ETH_ETHASHCL || ETH_ETHASHCUDA || ETH_ETHASHCPU
 
         app.add_flag("--list-devices", m_shouldListDevices, "");
 
@@ -725,6 +725,9 @@ public:
         {
             for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
             {
+                if (!it->second.cpDetected ||
+                    it->second.subscriptionType != DeviceSubscriptionTypeEnum::None)
+                    continue;
                 it->second.subscriptionType = DeviceSubscriptionTypeEnum::Cpu;
             }
         }

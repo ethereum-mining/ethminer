@@ -199,6 +199,7 @@ struct DeviceDescriptor
     unsigned int cuComputeMajor;
     unsigned int cuComputeMinor;
 
+    bool cpDetected;  // For CPU detected devices
     int cpCpuNumer;   // For CPU
 };
 

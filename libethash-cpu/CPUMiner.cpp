@@ -380,6 +380,7 @@ void CPUMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollectio
         deviceDescriptor.type = DeviceTypeEnum::Cpu;
         deviceDescriptor.totalMemory = getTotalPhysAvailableMemory();
 
+        deviceDescriptor.cpDetected = true;
         deviceDescriptor.cpCpuNumer = i;
 
         _DevicesCollection[uniqueId] = deviceDescriptor;
