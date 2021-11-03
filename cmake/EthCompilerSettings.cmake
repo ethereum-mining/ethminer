@@ -11,6 +11,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
     eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
 
+    eth_add_cxx_linker_flag_if_supported(-pthread)
+
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unknown-pragmas -Wextra")
@@ -18,6 +20,8 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
     eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
     eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
+
+    eth_add_cxx_linker_flag_if_supported(-pthread)
 
 	if ("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++ -fcolor-diagnostics -Qunused-arguments")
