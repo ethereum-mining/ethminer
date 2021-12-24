@@ -74,3 +74,5 @@ node_modules/
 
 # vscode
 .vscode/
+/.vs/ethminery/v16
+/.vs
