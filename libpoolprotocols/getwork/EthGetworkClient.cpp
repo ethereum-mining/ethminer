@@ -103,7 +103,8 @@ void EthGetworkClient::begin_connect()
         // Eventually endpoints get discarded on connection errors
         m_endpoint = m_endpoints.front();
         m_socket.async_connect(
-            m_endpoint, m_io_strand.wrap(boost::bind(&EthGetworkClient::handle_connect, this, _1)));
+            m_endpoint, boost::asio::bind_executor(
+                            m_io_strand, m_io_strand.wrap(boost::bind(&EthGetworkClient::handle_connect, this, _1))));
     }
     else
     {
