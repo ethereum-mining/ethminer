@@ -52,6 +52,8 @@ private:
 
     std::string getHttpMinerStatDetail();
 
+    std::string getHttpMinerMetrics();
+
     Disconnected m_onDisconnected;
 
     int m_sessionId;
