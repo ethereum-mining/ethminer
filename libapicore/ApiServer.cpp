@@ -1255,6 +1255,17 @@ std::string ApiConnection::getHttpMinerMetrics()
         _ret << start << "device_info{id=\""<< to_string(i) <<"\",pci=\"" << device["hardware"]["pci"].asString() << "\",name=\""<< device["hardware"]["name"].asString() << "\",mode=\""<< device["_mode"].asString() <<"\",paused=\""<< device["mining"]["paused"].asBool() <<"\"} 1" << std::endl;
     }
 
+    //Difficulty
+    _ret << help << start << "difficulty Mining Difficulty." << std::endl;
+    _ret << type << start << "difficulty gauge" << std::endl;    
+    _ret << start << "difficulty " << to_string(jStat["mining"]["difficulty"].asDouble()) << std::endl;
+
+    
+    //epoch
+    _ret << help << start << "epoch Mining Difficulty." << std::endl;
+    _ret << type << start << "epoch gauge" << std::endl;
+    _ret << start << "epoch " << to_string(jStat["mining"]["epoch"].asDouble()) << std::endl;
+
     //Device hashrate
     double total_hashrate = 0;
     _ret << help << start << "hashrate Hashrate of Miner Devices." << std::endl;
