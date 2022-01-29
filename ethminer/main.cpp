@@ -317,7 +317,7 @@ public:
 
         app.add_option("--opencl-device,--opencl-devices,--cl-devices", m_CLSettings.devices, "");
 
-        app.add_option("--cl-global-work", m_CLSettings.globalWorkSize, "", true);
+        app.add_option("--cl-global-work", m_CLSettings.globalWorkSizeMultiplier, "", true);
 
         app.add_set("--cl-local-work", m_CLSettings.localWorkSize, {64, 128, 256}, "", true);
 
