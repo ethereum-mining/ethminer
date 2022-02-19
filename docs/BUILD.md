@@ -28,11 +28,11 @@ This project uses [CMake] and [Hunter] package manager.
 ### Linux
 
 1. GCC version >= 4.8, tested on GCC compiler 7.5.0
-2. CMake version 3.23.0-rc1
+2. CMake version 3.21.5
 ``` shell
-wget https://github.com/Kitware/CMake/releases/download/v3.22.2/cmake-3.23.0-rc1.tar.gz
-tar -zxvf cmake-3.23.0-rc1.tar.gz
-cd cmake-3.23.0-rc1
+wget https://github.com/Kitware/CMake/releases/download/v3.21.5/cmake-3.21.5.tar.gz
+tar -zxvf cmake-3.21.5.tar.gz
+cd cmake-3.21.5
 ./bootstrap
 make
 sudo make install
