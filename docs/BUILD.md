@@ -27,8 +27,17 @@ This project uses [CMake] and [Hunter] package manager.
 
 ### Linux
 
-1. GCC version >= 4.8
-2. DBUS development libs if building with `-DETHDBUS`. E.g. on Ubuntu run:
+1. GCC version >= 4.8, tested on GCC compiler 7.5.0
+2. CMake version 3.23.0-rc1
+``` shell
+wget https://github.com/Kitware/CMake/releases/download/v3.22.2/cmake-3.23.0-rc1.tar.gz
+tar -zxvf cmake-3.23.0-rc1.tar.gz
+cd cmake-3.23.0-rc1
+./bootstrap
+make
+sudo make install
+```
+3. DBUS development libs if building with `-DETHDBUS`. E.g. on Ubuntu run:
 
 ```shell
 sudo apt install libdbus-1-dev
@@ -93,8 +102,12 @@ If you want to use locally installed [ROCm-OpenCL](https://rocmdocs.amd.com/en/l
     ```shell
     cmake --build . --config Release
     ```
-
-5. _(Optional, Linux only)_ Install the built executable:
+5. Generate the executable
+    ```shell
+    make all
+    ```
+    will find the executable in **ethminer/ethminer** in the **build** directory
+6. _(Optional, Linux only)_ Install the built executable:
 
     ```shell
     sudo make install
