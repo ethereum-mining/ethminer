@@ -16,6 +16,7 @@
  */
 
 
+
 #include <libethcore/Farm.h>
 
 #if ETH_ETHASHCL
@@ -382,7 +383,9 @@ void Farm::restart()
  */
 void Farm::restart_async()
 {
-    m_io_strand.get_io_service().post(m_io_strand.wrap(boost::bind(&Farm::restart, this)));
+   // m_io_strand.get_io_service().post(m_io_strand.wrap(boost::bind(&Farm::restart, this)));
+    m_io_strand.post(m_io_strand.wrap(boost::bind(&Farm::restart, this)));
+   
 }
 
 /**
