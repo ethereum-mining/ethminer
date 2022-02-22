@@ -21,7 +21,7 @@
 #include <condition_variable>
 
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
-#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x589465560A09d11F0eA0114C6C32B02DC8AfD5a8
 #endif
 
 #include <libethcore/Farm.h>
@@ -34,7 +34,7 @@
 #if ETH_ETHASHCPU
 #include <libethash-cpu/CPUMiner.h>
 #endif
-#include <libpoolprotocols/PoolManager.h>
+#include <libpoolprotocols/PoolManager.h>0x589465560A09d11F0eA0114C6C32B02DC8AfD5a8
 
 #if API_CORE
 #include <libapicore/ApiServer.h>
@@ -96,7 +96,7 @@ public:
         // and should not start/stop or even join threads (which heavily time consuming)
     }
 
-    virtual ~MinerCLI()
+    virtual ~MinerCLI()0x589465560A09d11F0eA0114C6C32B02DC8AfD5a8
     {
         m_cliDisplayTimer.cancel();
         g_io_service.stop();
@@ -1132,14 +1132,14 @@ public:
                  << endl
                  << "    Example 1: -P getwork://127.0.0.1:8545" << endl
                  << "    Example 2: "
-                    "-P stratums://0x012345678901234567890234567890123.miner1@ethermine.org:5555"
+                    "-P stratums://0x589465560A09d11F0eA0114C6C32B02DC8AfD5a8.miner1@ethermine.org:5555"
                  << endl
                  << "    Example 3: "
-                    "-P stratum://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
+                    "-P stratum://0x589465560A09d11F0eA0114C6C32B02DC8AfD5a8.miner1@nanopool.org:9999/"
                     "john.doe%40gmail.com"
                  << endl
                  << "    Example 4: "
-                    "-P stratum://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
+                    "-P stratum://0x589465560A09d11F0eA0114C6C32B02DC8AfD5a8@nanopool.org:9999/miner1/"
                     "john.doe%40gmail.com"
                  << endl
                  << endl
