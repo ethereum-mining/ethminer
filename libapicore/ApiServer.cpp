@@ -805,7 +805,7 @@ void ApiConnection::onRecvSocketDataCompleted(
             }
 
             // Do we support path ?
-            if (http_path != "/" && http_path != "/getstat1")
+            if (http_path != "/" && http_path != "/getstat1" && http_path != "/metrics")
             {
                 std::string what =
                     "The requested resource " + http_path + " not found on this server";
@@ -841,6 +841,34 @@ void ApiConnection::onRecvSocketDataCompleted(
                        << "Server: " << ethminer_get_buildinfo()->project_name_with_version
                        << "\r\n"
                        << "Content-Type: text/html; charset=utf-8\r\n"
+                       << "Content-Length: " << body.size() << "\r\n\r\n"
+                       << body << "\r\n";
+                }
+                catch (const std::exception& _ex)
+                {
+                    std::string what = "Internal error : " + std::string(_ex.what());
+                    ss.clear();
+                    ss << http_ver << " "
+                       << "500 Internal Server Error\r\n"
+                       << "Server: " << ethminer_get_buildinfo()->project_name_with_version
+                       << "\r\n"
+                       << "Content-Type: text/plain\r\n"
+                       << "Content-Length: " << what.size() << "\r\n\r\n"
+                       << what << "\r\n";
+                }
+            }
+
+            if (http_method == "GET" && (http_path == "/metrics"))
+            {
+                try
+                {
+                    std::string body = getHttpMinerMetrics();
+                    ss.clear();
+                    ss << http_ver << " "
+                       << "200 Ok Error\r\n"
+                       << "Server: " << ethminer_get_buildinfo()->project_name_with_version
+                       << "\r\n"
+                       << "Content-Type: text/plain; charset=utf-8\r\n"
                        << "Content-Length: " << body.size() << "\r\n\r\n"
                        << body << "\r\n";
                 }
@@ -1191,6 +1219,122 @@ std::string ApiConnection::getHttpMinerStatDetail()
          << "</td><td colspan=3 class=right>" << setprecision(2) << total_power << "</td></tfoot>";
 
     _ret << "</table></body></html>";
+    return _ret.str();
+}
+
+std::string ApiConnection::getHttpMinerMetrics()
+{
+    Json::Value jStat = getMinerStatDetail();
+    uint64_t durationSeconds = jStat["host"]["runtime"].asUInt64();
+    std::string hostname = jStat["host"]["name"].asString();
+    std::string version = jStat["host"]["version"].asString();
+    std::string pool = jStat["connection"]["uri"].asString();
+
+    std::string help  = "# HELP ";
+    std::string type = "# TYPE ";
+    std::string start =  "ethminer_";
+
+    std::stringstream _ret;
+    
+    // Info
+    _ret << help << start << "info Info of Miner Host." << std::endl;
+    _ret << type << start << "info gauge" << std::endl;
+    _ret << start << "info{hostname=\"" << hostname << "\",version=\""<< version << "\",pool=\""<< pool <<"\"} 1" << std::endl;
+
+    //Uptime
+    _ret << help << start << "uptime_sec Uptime of Miner in seconds." << std::endl;
+    _ret << type << start << "uptime_sec counter" << std::endl;
+    _ret << start << "uptime_sec " << to_string(durationSeconds) << std::endl;
+
+
+    //Device info
+    _ret << help << start << "device_info Info of Miner Devices." << std::endl;
+    _ret << type << start << "device_info gauge" << std::endl;
+    for (Json::Value::ArrayIndex i = 0; i != jStat["devices"].size(); i++){
+        Json::Value device = jStat["devices"][i];
+        _ret << start << "device_info{id=\""<< to_string(i) <<"\",pci=\"" << device["hardware"]["pci"].asString() << "\",name=\""<< device["hardware"]["name"].asString() << "\",mode=\""<< device["_mode"].asString() <<"\",paused=\""<< device["mining"]["paused"].asBool() <<"\"} 1" << std::endl;
+    }
+
+    //Difficulty
+    _ret << help << start << "difficulty Mining Difficulty." << std::endl;
+    _ret << type << start << "difficulty gauge" << std::endl;    
+    _ret << start << "difficulty " << to_string(jStat["mining"]["difficulty"].asDouble()) << std::endl;
+
+    
+    //epoch
+    _ret << help << start << "epoch Mining Difficulty." << std::endl;
+    _ret << type << start << "epoch gauge" << std::endl;
+    _ret << start << "epoch " << to_string(jStat["mining"]["epoch"].asDouble()) << std::endl;
+
+    //Device hashrate
+    double total_hashrate = 0;
+    _ret << help << start << "hashrate Hashrate of Miner Devices." << std::endl;
+    _ret << type << start << "hashrate gauge" << std::endl;
+    for (Json::Value::ArrayIndex i = 0; i != jStat["devices"].size(); i++){
+        Json::Value device = jStat["devices"][i];
+        double hashrate = std::stoul(device["mining"]["hashrate"].asString(), nullptr, 16);
+        total_hashrate += hashrate;
+        _ret << start << "hashrate{id=\""<< to_string(i) <<"\"} " << to_string(hashrate) << std::endl;
+    }
+
+    //Device Power
+    double total_power = 0;
+    _ret << help << start << "power Power of Miner Devices." << std::endl;
+    _ret << type << start << "power gauge" << std::endl;
+    for (Json::Value::ArrayIndex i = 0; i != jStat["devices"].size(); i++){
+        Json::Value device = jStat["devices"][i];
+        double power = device["hardware"]["sensors"][2].asDouble();
+        total_power += power;
+        _ret << start << "power{id=\""<< to_string(i) <<"\"} " << to_string(power) << std::endl;
+    }
+
+    //Device Shares
+    unsigned int total_shares[] = {0, 0, 0};
+    _ret << help << start << "shares Shares of Miner Devices." << std::endl;
+    _ret << type << start << "shares counter" << std::endl;
+    for (Json::Value::ArrayIndex i = 0; i != jStat["devices"].size(); i++){
+        Json::Value device = jStat["devices"][i];
+        uint shares[] = {device["mining"]["shares"][0].asUInt(), device["mining"]["shares"][1].asUInt(), device["mining"]["shares"][2].asUInt()};
+        total_shares[0] += shares[0];
+        total_shares[1] += shares[1];
+        total_shares[2] += shares[2];
+        _ret << start << "shares{state=\"accepted\",id=\""<< to_string(i) <<"\"} " << total_shares[0] << std::endl;
+        _ret << start << "shares{state=\"rejected\",id=\""<< to_string(i) <<"\"} " << total_shares[1] << std::endl;
+        _ret << start << "shares{state=\"failed\",id=\""<< to_string(i) <<"\"} " << total_shares[2] << std::endl;        
+    }
+
+    //Device Temp
+    _ret << help << start << "temp of Miner Devices in °C." << std::endl;
+    _ret << type << start << "temp gauge" << std::endl;
+    for (Json::Value::ArrayIndex i = 0; i != jStat["devices"].size(); i++){
+        Json::Value device = jStat["devices"][i];
+        _ret << start << "temp{id=\""<< to_string(i) <<"\"} " << device["hardware"]["sensors"][0].asString() << std::endl;
+    }
+    //Device Fan
+    _ret << help << start << "fan of Miner Devices in %." << std::endl;
+    _ret << type << start << "fan gauge" << std::endl;
+    for (Json::Value::ArrayIndex i = 0; i != jStat["devices"].size(); i++){
+        Json::Value device = jStat["devices"][i];
+        _ret << start << "fan{id=\""<< to_string(i) <<"\"} " << device["hardware"]["sensors"][1].asString() << std::endl;
+    }
+
+    //Total hashrate
+    _ret << help << start << "hashrate_total Total Hashrate of Miner." << std::endl;
+    _ret << type << start << "hashrate_total gauge" << std::endl;
+    _ret << start << "hashrate_total " << total_hashrate << std::endl;
+
+    //Total power
+    _ret << help << start << "power_total Total Power of Miner." << std::endl;
+    _ret << type << start << "power_total gauge" << std::endl;
+    _ret << start << "power_total " << total_power << std::endl;
+
+    //Total shares
+    _ret << help << start << "shares_total Total Shares of Miner." << std::endl;
+    _ret << type << start << "shares_total counter" << std::endl;
+    _ret << start << "shares_total{state=\"accepted\"} " << total_shares[0] << std::endl;
+    _ret << start << "shares_total{state=\"rejected\"} " << total_shares[1] << std::endl;
+    _ret << start << "shares_total{state=\"failed\"} " << total_shares[2] << std::endl;
+
     return _ret.str();
 }
 
