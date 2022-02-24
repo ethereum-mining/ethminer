@@ -14,17 +14,29 @@ branches:
 matrix:
     include:
         - os: linux
-          dist: trusty
+          dist: xenial
           sudo: required
           env:
               - CUDA=ON
               - CUDA_VERSION=9
         - os: linux
-          dist: trusty
+          dist: xenial
           sudo: required
           env:
               - CUDA=ON
               - CUDA_VERSION=8
+        - os: linux
+          dist: bionic
+          sudo: required
+          env:
+              - CUDA=ON
+              - CUDA_VERSION=10.2
+        - os: linux
+          dist: bionic
+          sudo: required
+          env:
+              - CUDA=ON
+              - CUDA_VERSION=11.2
         - os: osx
           osx_image: xcode9.2
           env:
@@ -46,8 +58,16 @@ before_install:
       sudo apt-get -q update
       sudo apt-get -qy install g++-6
       scripts/install_cmake.sh
-      . scripts/install-cuda-ubuntu1604.sh $CUDA_VERSION
-      pyenv global 3.6
+      if [ "$TRAVIS_DIST" = xenial ]; then
+        sudo apt-get -qy install mesa-common-dev
+        . scripts/install-cuda-ubuntu1604.sh $CUDA_VERSION
+        pyenv install 3.6.3
+        pyenv global 3.6.3
+      elif [ "$TRAVIS_DIST" = bionic ]; then
+        sudo apt-get -qy install libglu1-mesa-dev
+        . scripts/install-cuda-ubuntu1804.sh $CUDA_VERSION
+        pyenv global 3.6
+      fi
       pip install --user requests gitpython
       if [ "$CUDA_VERSION" = "8" ]; then
         sudo apt-get -qy install g++-5
