@@ -41,3 +41,7 @@ gfx901: gfx901_lws64.bin gfx901_lws128.bin gfx901_lws256.bin
 .PHONY: gfx906
 gfx906: gfx906_lws64.bin gfx906_lws128.bin gfx906_lws256.bin
 		@echo "Built gfx906 kernels..."
+		
+.PHONY: gfx908
+gfx908: gfx908_lws64.bin gfx908_lws128.bin gfx908_lws256.bin
+		@echo "Built gfx906 kernels..."
