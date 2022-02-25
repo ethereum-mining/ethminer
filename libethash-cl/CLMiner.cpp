@@ -301,6 +301,8 @@ void CLMiner::workLoop()
 
     try
     {
+
+        auto start = std::chrono::steady_clock::now();
         while (!shouldStop())
         {
 
@@ -387,6 +389,22 @@ void CLMiner::workLoop()
                                  .count()
                           << " us.";
 #endif
+            }
+
+            if (m_settings.targetUsage != 1.0f)
+            {
+                //See CUDAMiner.cpp around line 400 for description of algorithm
+                double usage_ratio = m_settings.targetUsage;
+
+                double micros_taken = std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - start)
+                                          .count();
+                double sleep_micros = micros_taken * (1.0 / usage_ratio - 1);
+
+                std::this_thread::sleep_for(
+                    std::chrono::microseconds((std::uint64_t)sleep_micros));
+
+                start = std::chrono::steady_clock::now();
             }
 
             // Run the kernel.

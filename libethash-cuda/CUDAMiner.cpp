@@ -17,6 +17,7 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <libethcore/Farm.h>
 #include <ethash/ethash.hpp>
+#include <chrono>
 
 #include "CUDAMiner.h"
 
@@ -349,6 +350,7 @@ void CUDAMiner::search(
     bool done = false;
 
 
+    auto start = std::chrono::steady_clock::now();
     while (!done)
     {
         // Exit next time around if there's new work awaiting
@@ -402,8 +404,35 @@ void CUDAMiner::search(
             // restart the stream on the next batch of nonces
             // unless we are done for this round.
             if (!done)
+            {
+                if (m_settings.targetUsage != 1.0f)
+                {
+                    // The user requested for a GPU usage lower than 100% so we need to sleep this
+                    // thread while none of our work is assigned to the GPU to give it some
+                    // breathing room. This sleep value will be mathmatically to have us hit the
+                    // target total usage percentage.
+                    //
+                    // We need to also divide by the stream count to hit the correct usage target
+                    // because otherwise we will be off by a factor of the number of streams due to
+                    // other streams transparently running while we are sleeping, causing to no
+                    // breathing room being created
+                    double usage_ratio =
+                        m_settings.targetUsage / static_cast<double>(m_settings.streams);
+
+                    double micros_taken = std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now() - start)
+                                              .count();
+                    double sleep_micros = micros_taken * (1.0 / usage_ratio - 1);
+
+                    std::this_thread::sleep_for(
+                        std::chrono::microseconds((std::uint64_t)sleep_micros));
+
+                    start = std::chrono::steady_clock::now();
+                }
+
                 run_ethash_search(
                     m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce);
+            }
 
             if (found_count)
             {
@@ -441,3 +470,4 @@ void CUDAMiner::search(
                 << " ms.";
 #endif
 }
+

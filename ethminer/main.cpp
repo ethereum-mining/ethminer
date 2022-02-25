@@ -284,6 +284,9 @@ public:
 
         app.add_flag("--stdout", g_logStdout, "");
 
+        float targetUsage = 1.0f;
+        app.add_option("--target-usage", targetUsage, "", true)->check(CLI::Range(0.0f, 1.0f));
+
 #if API_CORE
 
         app.add_option("--api-bind", m_api_bind, "", true)
@@ -404,7 +407,9 @@ public:
 
 #endif
 
-
+        m_CUSettings.targetUsage = targetUsage;
+        m_CLSettings.targetUsage = targetUsage;
+        m_CPSettings.targetUsage = targetUsage;
         if (cl_miner)
             m_minerType = MinerType::CL;
         else if (cuda_miner)
@@ -720,8 +725,7 @@ public:
         }
 #endif
 #if ETH_ETHASHCPU
-        if (!m_CPSettings.devices.size() &&
-            (m_minerType == MinerType::CPU))
+        if (!m_CPSettings.devices.size() && (m_minerType == MinerType::CPU))
         {
             for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
             {
@@ -1061,6 +1065,9 @@ public:
                  << "                        128 to log time for solution submission" << endl
                  << "                        256 to log program flow" << endl
 #endif
+                 << "    --target-usage      FLOAT {0.0 .. 1.0} Default = 1.0" << endl
+                 << "                        Set the target usage" << endl
+
                  << endl;
         }
 
@@ -1211,7 +1218,6 @@ public:
 private:
     void doMiner()
     {
-
         new PoolManager(m_PoolSettings);
         if (m_mode != OperationMode::Simulation)
             for (auto conn : m_PoolSettings.connections)
@@ -1268,9 +1274,9 @@ private:
 
     FarmSettings m_FarmSettings;  // Operating settings for Farm
     PoolSettings m_PoolSettings;  // Operating settings for PoolManager
-    CLSettings m_CLSettings;          // Operating settings for CL Miners
-    CUSettings m_CUSettings;          // Operating settings for CUDA Miners
-    CPSettings m_CPSettings;          // Operating settings for CPU Miners
+    CLSettings m_CLSettings;      // Operating settings for CL Miners
+    CUSettings m_CUSettings;      // Operating settings for CUDA Miners
+    CPSettings m_CPSettings;      // Operating settings for CPU Miners
 
     //// -- Pool manager related params
     //std::vector<std::shared_ptr<URI>> m_poolConns;
