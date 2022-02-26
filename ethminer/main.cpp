@@ -921,8 +921,6 @@ public:
                  << "                        eg --cu-devices 0 2 3" << endl
                  << "                        If not set all available CUDA devices will be used"
                  << endl
-                 << "    --cu-parallel-hash  UINT {1,2,4,8} Default = 4" << endl
-                 << "                        Set the number of hashes per kernel" << endl
                  << "    --cu-streams        INT [1 .. 99] Default = 2" << endl
                  << "                        Set the number of streams per GPU" << endl
                  << "    --cu-schedule       TEXT Default = 'sync'" << endl
