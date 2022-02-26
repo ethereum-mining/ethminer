@@ -133,7 +133,7 @@ Only GCN 1.0 GPUs (78x0, 79x0, 270, 280), but in a different way. You'll see tha
 
 ### Can I still mine ETH with my 4GB GPU?
 
-Not really, your VRAM must be above the DAG size (Currently about 4.023 GB.) to get best performance. Without it severe hash loss will occur.
+Not really, your VRAM must be above the DAG size (Currently about 4.135 GB.) to get best performance. Without it severe hash loss will occur.
 
 ### What are the optimal launch parameters?
 
