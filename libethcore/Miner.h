@@ -101,6 +101,7 @@ struct CUSettings : public MinerSettings
     unsigned schedule = 4;
     unsigned gridSize = 8192;
     unsigned blockSize = 128;
+    int usleep = -1;
 };
 
 // Holds settings for OpenCL Miner
