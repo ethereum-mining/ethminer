@@ -292,12 +292,11 @@ Without email:
 ### sparkpool.com
 
 ```
--P stratum1+tcp://ETH_WALLET.WORKERNAME@cn.sparkpool.com:3333
--P stratum1+tcp://ETH_WALLET.WORKERNAME@eu.sparkpool.com:3333
+-P stratum1+tcp://ETH_WALLET.WORKERNAME@cn.sparkpool.com:3335
+-P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-eu.sparkpool.com:3333
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@jp.sparkpool.com:3333
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@kr.sparkpool.com:3333
--P stratum1+tcp://ETH_WALLET.WORKERNAME@na-east.sparkpool.com:3333
--P stratum1+tcp://ETH_WALLET.WORKERNAME@na-west.sparkpool.com:3333
+-P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us.sparkpool.com:3333
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@tw.sparkpool.com:3333
 ```
 
