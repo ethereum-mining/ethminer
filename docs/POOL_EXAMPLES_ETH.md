@@ -226,15 +226,19 @@ SSL connection:
 Non-SSL connection:
 
 ```
--P stratum1+tcp://ETH_WALLET.WORKERNAME@eu.flexpool.io:4444
--P stratum1+tcp://ETH_WALLET.WORKERNAME@us.flexpool.io:4444
+-P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-de.flexpool.io:4444
+-P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us-east.flexpool.io:4444
+-P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us-west.flexpool.io:4444
+-P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-sg.flexpool.io:4444
 ```
 
 SSL connection:
 
 ```
--P stratum1+ssl://ETH_WALLET.WORKERNAME@eu.flexpool.io:5555
--P stratum1+ssl://ETH_WALLET.WORKERNAME@us.flexpool.io:5555
+-P stratum1+ssl://ETH_WALLET.WORKERNAME@eth-de.flexpool.io:5555
+-P stratum1+ssl://ETH_WALLET.WORKERNAME@eth-us-east.flexpool.io:5555
+-P stratum1+ssl://ETH_WALLET.WORKERNAME@eth-us-west.flexpool.io:5555
+-P stratum1+ssl://ETH_WALLET.WORKERNAME@eth-sg.flexpool.io:5555
 ```
 
 ### miningpoolhub.com
