@@ -84,7 +84,7 @@ private:
 
     WorkPackage m_currentWp;
 
-    boost::asio::io_service::strand m_io_strand;
+    boost::asio::io_context::strand m_io_strand;
     boost::asio::deadline_timer m_failovertimer;
     boost::asio::deadline_timer m_submithrtimer;
     boost::asio::deadline_timer m_reconnecttimer;

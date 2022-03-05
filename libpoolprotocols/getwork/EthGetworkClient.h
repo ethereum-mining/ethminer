@@ -49,7 +49,7 @@ private:
     std::atomic<bool> m_txPending = {false};  // Whether or not an async socket operation is pending
     boost::lockfree::queue<std::string*> m_txQueue;
 
-    boost::asio::io_service::strand m_io_strand;
+    boost::asio::io_context::strand m_io_strand;
 
     boost::asio::ip::tcp::socket m_socket;
     boost::asio::ip::tcp::resolver m_resolver;
