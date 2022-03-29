@@ -1740,7 +1740,7 @@ void EthStratumClient::onRecvSocketDataCompleted(
                     {
                         string what = jRdr.getFormattedErrorMessages();
                         boost::replace_all(what, "\n", " ");
-                        cwarn << "Stratum got invalid Json message : " << what;
+                        cwarn << "Stratum got invalid Json message : " << what << ",jMsg: " << jMsg << ",line: "<<line << ",m_message: "<< m_message;
                     }
                 }
             }
