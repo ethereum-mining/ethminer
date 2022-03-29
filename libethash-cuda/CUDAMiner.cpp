@@ -179,7 +179,9 @@ bool CUDAMiner::initEpoch_internal()
                 << m_deviceDescriptor.uniqueId;
         cudalog << "Mining suspended ...";
         pause(MinerPauseEnum::PauseDueToInitEpochError);
-        retVar = true;
+        string _what = "GPU error when generating DAG!";
+        throw std::runtime_error(_what);
+        retVar = false;
     }
 
     return retVar;
@@ -214,6 +216,11 @@ void CUDAMiner::workLoop()
             // Epoch change ?
             if (current.epoch != w.epoch)
             {
+                if (current.epoch != -1 && g_exitOnNewEpoch)
+                {
+                    std::cerr << "Epoch change, miner exit!" << std::endl;
+                    raise(SIGTERM);
+                }
                 if (!initEpoch())
                     break;  // This will simply exit the thread
 

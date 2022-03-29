@@ -55,6 +55,7 @@ using namespace dev::eth;
 // Global vars
 bool g_running = false;
 bool g_exitOnError = false;  // Whether or not ethminer should exit on mining threads errors
+bool g_exitOnNewEpoch = false;  // Exit on new epoch
 
 condition_variable g_shouldstop;
 boost::asio::io_service g_io_service;  // The IO service itself
@@ -271,6 +272,8 @@ public:
         app.add_option("--HWMON", m_FarmSettings.hwMon, "", true)->check(CLI::Range(0, 2));
 
         app.add_flag("--exit", g_exitOnError, "");
+        
+        app.add_flag("--exit-new-epoch", g_exitOnNewEpoch, "");
 
         vector<string> pools;
         app.add_option("-P,--pool", pools, "");
@@ -1008,6 +1011,8 @@ public:
                  << "                        1 Monitor temperature and fan percentage" << endl
                  << "                        2 As 1 plus monitor power drain" << endl
                  << "    --exit              FLAG Stop ethminer whenever an error is encountered"
+                 << endl
+                 << "    --exit-new-epoch    FLAG Stop ethminer when epoch changes"
                  << endl
                  << "    --ergodicity        INT[0 .. 2] Default = 0" << endl
                  << "                        Sets how ethminer chooses the nonces segments to"
