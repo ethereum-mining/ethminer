@@ -3,6 +3,7 @@
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg)](https://github.com/RichardLitt/standard-readme)
 [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)][Gitter]
 [![Releases](https://img.shields.io/github/downloads/ethereum-mining/ethminer/total.svg)][Releases]
+[![Coverity Scan Build Status](https://img.shields.io/coverity/scan/16024.svg)](https://scan.coverity.com/projects/ethereum-mining-ethminer-ac1b0eaf-5bed-4c82-bbab-a303c07bb6a7)
 
 > Ethereum miner with OpenCL, CUDA and stratum support
 
