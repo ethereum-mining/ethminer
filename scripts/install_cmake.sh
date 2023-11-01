@@ -8,7 +8,7 @@
 
 set -e
 
-VERSION=3.8.1
+VERSION=3.21.5
 
 if [ "$1" = "--prefix" ]; then
     PREFIX="$2"
